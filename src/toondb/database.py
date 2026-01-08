@@ -323,6 +323,41 @@ class _FFI:
             ctypes.c_char_p
         ]
         lib.toondb_get_table_index_policy.restype = ctypes.c_uint8
+        
+        # Temporal Graph API
+        # Define C_TemporalEdge structure first
+        class C_TemporalEdge(ctypes.Structure):
+            _fields_ = [
+                ("from_id", ctypes.c_char_p),
+                ("edge_type", ctypes.c_char_p),
+                ("to_id", ctypes.c_char_p),
+                ("valid_from", ctypes.c_uint64),
+                ("valid_until", ctypes.c_uint64),
+                ("properties_json", ctypes.c_char_p),
+            ]
+        
+        # toondb_add_temporal_edge(ptr, namespace, edge) -> c_int
+        lib.toondb_add_temporal_edge.argtypes = [
+            ctypes.c_void_p,  # ptr
+            ctypes.c_char_p,  # namespace
+            C_TemporalEdge    # edge struct by value
+        ]
+        lib.toondb_add_temporal_edge.restype = ctypes.c_int
+        
+        # toondb_query_temporal_graph(ptr, namespace, node_id, mode, timestamp, edge_type) -> *c_char
+        lib.toondb_query_temporal_graph.argtypes = [
+            ctypes.c_void_p,  # ptr
+            ctypes.c_char_p,  # namespace
+            ctypes.c_char_p,  # node_id
+            ctypes.c_int,     # mode (0=CURRENT, 1=POINT_IN_TIME, 2=RANGE)
+            ctypes.c_uint64,  # timestamp
+            ctypes.c_char_p   # edge_type (optional, can be NULL)
+        ]
+        lib.toondb_query_temporal_graph.restype = ctypes.c_char_p
+        
+        # toondb_free_string(ptr) - Free strings returned by query_temporal_graph
+        lib.toondb_free_string.argtypes = [ctypes.c_char_p]
+        lib.toondb_free_string.restype = None
 
 
 class Transaction:
@@ -1777,3 +1812,153 @@ class Database:
             del self._namespaces[name]
         
         return True
+    
+    # =========================================================================
+    # Temporal Graph Operations (FFI)
+    # =========================================================================
+    
+    def add_temporal_edge(
+        self,
+        namespace: str,
+        from_id: str,
+        edge_type: str,
+        to_id: str,
+        valid_from: int,
+        valid_until: int = 0,
+        properties: Optional[Dict[str, str]] = None
+    ) -> None:
+        """
+        Add a temporal edge with validity interval (Embedded FFI mode).
+        
+        Temporal edges allow time-travel queries: "What did the system know at time T?"
+        Essential for agent memory systems that need to reason about state changes.
+        
+        Args:
+            namespace: Namespace for the edge
+            from_id: Source node ID
+            edge_type: Type of relationship (e.g., "STATE", "KNOWS", "FOLLOWS")
+            to_id: Target node ID
+            valid_from: Start timestamp in milliseconds (Unix epoch)
+            valid_until: End timestamp in milliseconds (0 = no expiry, still valid)
+            properties: Optional metadata dictionary
+        
+        Example:
+            # Record: Door was open from 10:00 to 11:00
+            import time
+            now = int(time.time() * 1000)
+            one_hour = 60 * 60 * 1000
+            
+            db.add_temporal_edge(
+                namespace="smart_home",
+                from_id="door_front",
+                edge_type="STATE",
+                to_id="open",
+                valid_from=now - one_hour,
+                valid_until=now,
+                properties={"sensor": "motion_1"}
+            )
+        """
+        self._check_open()
+        
+        import json
+        
+        # Use the C_TemporalEdge structure from FFI
+        # (defined in _FFI class)
+        # Convert properties to JSON
+        props_json = None if properties is None else json.dumps(properties).encode("utf-8")
+        
+        edge = _FFI.lib.toondb_add_temporal_edge.argtypes[2](  # Get C_TemporalEdge class
+            from_id=from_id.encode("utf-8"),
+            edge_type=edge_type.encode("utf-8"),
+            to_id=to_id.encode("utf-8"),
+            valid_from=valid_from,
+            valid_until=valid_until,
+            properties_json=props_json,
+        )
+        
+        result = _FFI.lib.toondb_add_temporal_edge(
+            self._ptr,
+            namespace.encode("utf-8"),
+            edge
+        )
+        
+        if result != 0:
+            raise DatabaseError(f"Failed to add temporal edge: error code {result}")
+    
+    def query_temporal_graph(
+        self,
+        namespace: str,
+        node_id: str,
+        mode: str = "CURRENT",
+        timestamp: Optional[int] = None,
+        edge_type: Optional[str] = None
+    ) -> List[Dict]:
+        """
+        Query temporal graph edges (Embedded FFI mode).
+        
+        Query modes:
+        - "CURRENT": Edges valid now (valid_until = 0 or > current time)
+        - "POINT_IN_TIME": Edges valid at specific timestamp
+        - "RANGE": All edges within time range (requires timestamp for start/end)
+        
+        Args:
+            namespace: Namespace to query
+            node_id: Node to query edges from
+            mode: Query mode ("CURRENT", "POINT_IN_TIME", "RANGE")
+            timestamp: Timestamp for POINT_IN_TIME or RANGE queries (milliseconds)
+            edge_type: Optional filter by edge type
+        
+        Returns:
+            List of edge dictionaries with keys: from_id, edge_type, to_id,
+            valid_from, valid_until, properties
+        
+        Example:
+            # Query: "Was the door open 1.5 hours ago?"
+            import time
+            now = int(time.time() * 1000)
+            
+            edges = db.query_temporal_graph(
+                namespace="smart_home",
+                node_id="door_front",
+                mode="POINT_IN_TIME",
+                timestamp=now - int(1.5 * 60 * 60 * 1000)
+            )
+            
+            if any(e["to_id"] == "open" for e in edges):
+                print("Yes, door was open")
+        """
+        self._check_open()
+        
+        import json
+        
+        # Default to current time for POINT_IN_TIME if not provided
+        if mode == "POINT_IN_TIME" and timestamp is None:
+            import time
+            timestamp = int(time.time() * 1000)
+        
+        # Convert mode string to int
+        mode_map = {"CURRENT": 0, "POINT_IN_TIME": 1, "RANGE": 2}
+        mode_int = mode_map.get(mode, 0)
+        
+        # Call FFI function
+        result_ptr = _FFI.lib.toondb_query_temporal_graph(
+            self._ptr,
+            namespace.encode("utf-8"),
+            node_id.encode("utf-8"),
+            mode_int,
+            timestamp or 0,
+            edge_type.encode("utf-8") if edge_type else None
+        )
+        
+        if result_ptr is None:
+            raise DatabaseError("Failed to query temporal graph")
+        
+        try:
+            # Convert C string to Python string
+            json_str = ctypes.c_char_p(result_ptr).value.decode("utf-8")
+            # Parse JSON array
+            edges = json.loads(json_str)
+            return edges
+        finally:
+            # Free the C string
+            _FFI.lib.toondb_free_string(result_ptr)

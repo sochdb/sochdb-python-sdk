@@ -1,72 +1,47 @@
 # ToonDB Python SDK v0.3.4
 
-**Ultra-thin client for ToonDB server.**  
-All business logic runs on the server.
+**Dual-mode architecture: Embedded (FFI) + Server (gRPC/IPC)**  
+Choose the deployment mode that fits your needs.
 
-## Architecture: Thick Server / Thin Client
+## Architecture: Flexible Deployment
 
 ```
-┌────────────────────────────────────────────────┐
-│         Rust Server (toondb-grpc)              │
-├────────────────────────────────────────────────┤
-│  • All business logic (Graph, Policy, Search)  │
-│  • Vector operations (HNSW)                    │
-│  • SQL parsing & execution                     │
-│  • Collections & Namespaces                    │
-│  • Single source of truth                      │
-└────────────────────────────────────────────────┘
-                       │ gRPC/IPC
-                       ▼
-            ┌─────────────────────┐
-            │   Python SDK        │
-            │   (~200 LOC)        │
-            ├─────────────────────┤
-            │ • Transport layer   │
-            │ • Type definitions  │
-            │ • Zero logic        │
-            └─────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                    DEPLOYMENT OPTIONS                        │
+├─────────────────────────────────────────────────────────────┤
+│                                                               │
+│  1. EMBEDDED MODE (FFI)          2. SERVER MODE (gRPC)      │
+│  ┌─────────────────────┐         ┌─────────────────────┐   │
+│  │   Python App        │         │   Python App        │   │
+│  │   ├─ Database.open()│         │   ├─ ToonDBClient() │   │
+│  │   └─ Direct FFI     │         │   └─ gRPC calls     │   │
+│  │         │           │         │         │           │   │
+│  │         ▼           │         │         ▼           │   │
+│  │   libtoondb_storage │         │   toondb-grpc       │   │
+│  │   (Rust native)     │         │   (Rust server)     │   │
+│  └─────────────────────┘         └─────────────────────┘   │
+│                                                               │
+│  ✅ No server needed               ✅ Multi-language          │
+│  ✅ Local files                    ✅ Centralized logic      │
+│  ✅ Simple deployment              ✅ Production scale       │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### What This SDK Contains
+### When to Use Each Mode
 
-**This SDK is ~5,400 lines of code, consisting of:**
-- **Transport Layer** (~1,000 LOC): gRPC and IPC clients
-- **Type Definitions** (~500 LOC): Errors, queries, results
-- **Generated Code** (~4,000 LOC): Protobuf-generated files
+**Embedded Mode (FFI):**
+- ✅ Local development and testing
+- ✅ Jupyter notebooks and data science
+- ✅ Single-process applications
+- ✅ Edge deployments without network
+- ✅ No server setup required
 
-**This SDK does NOT contain:**
-- ❌ No database logic (all server-side)
-- ❌ No vector operations (all server-side)
-- ❌ No SQL parsing (all server-side)
-- ❌ No graph algorithms (all server-side)
-- ❌ No policy evaluation (all server-side)
-
-### Why This Design?
-
-**Before (Fat Client - REMOVED):**
-```python
-# ❌ OLD: Business logic duplicated in every language
-from toondb import Database, GraphOverlay, PolicyEngine
-
-db = Database.open("./data")  # 1780 lines of logic
-graph = GraphOverlay(db)      # 664 lines of duplicate code
-graph.add_node("alice", "person", {"name": "Alice"})
-```
-
-**After (Thin Client - CURRENT):**
-```python
-# ✅ NEW: All logic on server, SDK just sends requests
-from toondb import ToonDBClient
-
-client = ToonDBClient("localhost:50051")
-client.add_node("alice", "person", {"name": "Alice"})  # → Server handles it
-```
-
-**Benefits:**
-- 🎯 **Single source of truth**: Fix bugs once in Rust, not 3 times
-- 🔧 **3x easier maintenance**: No semantic drift between languages
-- 🚀 **Faster development**: Add features once, works everywhere
-- 📦 **Smaller SDK size**: 66% code reduction
+**Server Mode (gRPC):**
+- ✅ Production deployments
+- ✅ Multi-language teams (Python, Node.js, Go)
+- ✅ Distributed systems
+- ✅ Centralized business logic
+- ✅ Horizontal scaling
 
 ---
 
@@ -86,7 +61,47 @@ pip install -e .
 
 ## Quick Start
 
-### 1. Start ToonDB Server
+### Mode 1: Embedded (FFI) - No Server Required
+
+```python
+from toondb import Database
+
+# Open database with direct FFI bindings
+with Database.open("./mydb") as db:
+    # Key-value operations
+    db.put(b"key", b"value")
+    value = db.get(b"key")
+    
+    # Namespaces
+    ns = db.namespace("tenant_123")
+    collection = ns.collection("documents", dimension=384)
+    
+    # Temporal graphs (NEW in 0.3.4)
+    import time
+    now = int(time.time() * 1000)
+    
+    db.add_temporal_edge(
+        namespace="smart_home",
+        from_id="door_front",
+        edge_type="STATE",
+        to_id="open",
+        valid_from=now - 3600000,  # 1 hour ago
+        valid_until=now,
+        properties={"sensor": "motion_1"}
+    )
+    
+    # Time-travel query: "Was door open 30 minutes ago?"
+    edges = db.query_temporal_graph(
+        namespace="smart_home",
+        node_id="door_front",
+        mode="POINT_IN_TIME",
+        timestamp=now - 1800000  # 30 minutes ago
+    )
+```
+
+### Mode 2: Server (gRPC) - For Production
+
+### 2.1. Start ToonDB Server
 
 ```bash
 # Start the gRPC server
@@ -96,7 +111,7 @@ cargo run -p toondb-grpc --release
 # Server listens on localhost:50051
 ```
 
-### 2. Connect from Python
+### 2.2. Connect from Python
 
 ```python
 from toondb import ToonDBClient
@@ -251,7 +266,7 @@ client.batch_put([
 
 **Temporal Graph Operations:**
 ```python
-# Add time-bounded edge
+# Add time-bounded edge (gRPC)
 client.add_temporal_edge(
     namespace: str,
     from_id: str,
@@ -262,7 +277,7 @@ client.add_temporal_edge(
     properties: Optional[Dict] = None
 ) -> bool
 
-# Query at specific point in time
+# Query at specific point in time (gRPC)
 edges = client.query_temporal_graph(
     namespace: str,
     node_id: str,
@@ -272,7 +287,17 @@ edges = client.query_temporal_graph(
     end_time: int = None,    # For RANGE
     edge_types: List[str] = None
 ) -> List[TemporalEdge]
+
+# Same API available in embedded mode via Database class
+db.add_temporal_edge(...)  # Direct FFI, no server needed
+db.query_temporal_graph(...)  # Direct FFI, no server needed
 ```
+
+**Use Cases for Temporal Graphs:**
+- 🧠 **Agent Memory**: "Was door open 30 minutes ago?"
+- 📊 **Audit Trail**: Track all state changes over time
+- 🔍 **Time-Travel Debugging**: Query historical system state
+- 🤖 **Multi-Agent Systems**: Each agent tracks beliefs over time
 
 **Format Utilities:**
 ```python
@@ -616,20 +641,59 @@ client.add_node("alice", "person", {"name": "Alice"})
 
 ## FAQ
 
-**Q: Why remove the embedded Database class?**  
-A: To eliminate duplicate business logic. Having SQL parsers, vector indexes, and graph algorithms in every language (Python, JS, Go) creates 3x maintenance burden and semantic drift.
+**Q: Which mode should I use?**  
+A: 
+- **Embedded (FFI)**: For local dev, notebooks, single-process apps
+- **Server (gRPC)**: For production, multi-language, distributed systems
 
-**Q: What if I need offline/embedded mode?**  
-A: Use the IPC client with a local server process. The server can run on the same machine with Unix socket communication (50 μs latency).
+**Q: Can I switch between modes?**  
+A: Yes! Both modes have the same API. Change `Database.open()` to `ToonDBClient()` and vice versa.
 
-**Q: Is this slower than the old FFI-based approach?**  
-A: Network overhead is ~100-200 μs. For batch operations (1000+ vectors), the throughput is identical. The server's Rust implementation is 15x faster than alternatives, offsetting any network cost.
+**Q: Do temporal graphs work in embedded mode?**  
+A: Yes! As of v0.3.4, temporal graphs work in both embedded and server modes with identical APIs.
 
-**Q: Can I use this without a server?**  
-A: No. This is a thin client that requires a ToonDB server. To deploy, run one server and connect multiple clients.
+**Q: Is embedded mode slower than server mode?**  
+A: Embedded mode is faster for single-process use (no network overhead). Server mode is better for distributed deployments.
 
-**Q: Where is the old Database class?**  
-A: Removed in v0.3.4. All database operations now happen server-side via gRPC/IPC.
+**Q: Where is the business logic?**  
+A: All business logic is in Rust. Embedded mode uses FFI bindings, server mode uses gRPC. Same Rust code, different transport.
+
+**Q: What about the old "fat client" Database class?**  
+A: It's still here as embedded mode! We now support dual-mode: embedded FFI + server gRPC.
+
+---
+
+## Examples
+
+See the [examples/](examples/) directory for complete working examples:
+
+**Embedded Mode (FFI - No Server):**
+- [23_collections_embedded.py](examples/23_collections_embedded.py) - Document storage, JSON, transactions
+- [22_namespaces.py](examples/22_namespaces.py) - Multi-tenant isolation with key prefixes
+- [24_batch_operations.py](examples/24_batch_operations.py) - Atomic writes, rollback, conditional updates
+- [25_temporal_graph_embedded.py](examples/25_temporal_graph_embedded.py) - Time-travel queries (NEW!)
+
+**Server Mode (gRPC - Requires Server):**
+- [21_temporal_graph.py](examples/21_temporal_graph.py) - Temporal graphs via gRPC
+
+---
+
+## Migration Guide
+
+**From v0.3.3 to v0.3.4:**
+
+No breaking changes! We added embedded FFI support while keeping server mode.
+
+**New in 0.3.4:**
+```python
+# NEW: Temporal graphs in embedded mode
+db.add_temporal_edge(...)
+db.query_temporal_graph(...)
+
+# NEW: Same temporal graph API in server mode
+client.add_temporal_edge(...)
+client.query_temporal_graph(...)
+```
 
 ---
 
