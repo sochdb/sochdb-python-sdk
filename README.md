@@ -554,32 +554,6 @@ results = client.search_collection(
 
 ---
 
-## Server Requirements
-
-### Starting the Server
-
-```bash
-# Development mode
-cd toondb
-cargo run -p toondb-grpc
-
-# Production mode (optimized)
-cargo build --release -p toondb-grpc
-./target/release/toondb-grpc --host 0.0.0.0 --port 50051
-```
-
-### Server Configuration
-
-Server runs all business logic including:
-- ✅ HNSW vector indexing (15x faster than ChromaDB)
-- ✅ SQL query parsing and execution
-- ✅ Graph traversal algorithms
-- ✅ Policy evaluation
-- ✅ Multi-tenant namespace isolation
-- ✅ Collection management
-
----
-
 ## Performance
 
 **Network Overhead:**
@@ -594,48 +568,6 @@ Server runs all business logic including:
 - Use **batch operations** for high throughput
 - Use **IPC** for same-machine communication
 - Use **gRPC** for distributed systems
-
----
-
-## Comparison with Old Architecture
-
-| Feature | Old (Fat Client) | New (Thin Client) |
-|---------|------------------|-------------------|
-| SDK Size | 15,872 LOC | 5,400 LOC (-66%) |
-| Business Logic | In SDK (Python) | In Server (Rust) |
-| Bug Fixes | Per language | Once in server |
-| Semantic Drift | High risk | Zero risk |
-| Performance | FFI overhead | Network call |
-| Maintenance | 3x effort | 1x effort |
-
----
-
-## Migration Guide
-
-### From Fat Client (v0.3.3 or earlier)
-
-**Old Code:**
-```python
-from toondb import Database, GraphOverlay
-
-db = Database.open("./data")
-graph = GraphOverlay(db)
-graph.add_node("alice", "person", {"name": "Alice"})
-```
-
-**New Code:**
-```python
-from toondb import ToonDBClient
-
-client = ToonDBClient("localhost:50051")
-client.add_node("alice", "person", {"name": "Alice"})
-```
-
-**Key Changes:**
-1. Replace `Database.open()` → `ToonDBClient()`
-2. Start the gRPC server first
-3. All operations now go through client methods
-4. No more FFI/native bindings needed
 
 ---
 
@@ -678,30 +610,22 @@ See the [examples/](examples/) directory for complete working examples:
 
 ---
 
-## Migration Guide
+## Getting Help
 
-**From v0.3.3 to v0.3.4:**
-
-No breaking changes! We added embedded FFI support while keeping server mode.
-
-**New in 0.3.4:**
-```python
-# NEW: Temporal graphs in embedded mode
-db.add_temporal_edge(...)
-db.query_temporal_graph(...)
-
-# NEW: Same temporal graph API in server mode
-client.add_temporal_edge(...)
-client.query_temporal_graph(...)
-```
+- **Documentation**: https://toondb.dev
+- **GitHub Issues**: https://github.com/sushanthpy/toondb/issues
+- **Examples**: See [examples/](examples/) directory
 
 ---
 
-## Support
+## Contributing
 
-- **GitHub**: https://github.com/sushanthpy/toondb
-- **Issues**: https://github.com/sushanthpy/toondb/issues
-- **Docs**: https://toondb.dev
+Interested in contributing? See [CONTRIBUTING.md](CONTRIBUTING.md) for:
+- Development environment setup
+- Building from source  
+- Running tests
+- Code style guidelines
+- Pull request process
 
 ---
 
