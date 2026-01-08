@@ -48,7 +48,7 @@ from .namespace import (
 from .vector import VectorIndex
 
 # Server mode (gRPC/IPC)
-from .grpc_client import ToonDBClient, SearchResult, Document, GraphNode, GraphEdge
+from .grpc_client import ToonDBClient, SearchResult, Document, GraphNode, GraphEdge, TemporalEdge
 from .ipc_client import IpcClient
 
 # Format utilities

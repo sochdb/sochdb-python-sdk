@@ -45,6 +45,17 @@ class GraphEdge:
     properties: Dict[str, str]
 
 
+@dataclass
+class TemporalEdge:
+    """Temporal edge with validity interval."""
+    from_id: str
+    edge_type: str
+    to_id: str
+    valid_from: int  # Unix timestamp (ms)
+    valid_until: int  # Unix timestamp (ms), 0 = no expiry
+    properties: Dict[str, str]
+
+
 class ToonDBClient:
     """
     Thin gRPC client for ToonDB.
@@ -497,6 +508,104 @@ class ToonDBClient:
         
         response = stub.Delete(toondb_pb2.KvDeleteRequest(namespace=namespace, key=key))
         return response.success
+
+    # =========================================================================
+    # Temporal Graph Operations
+    # =========================================================================
+    
+    def add_temporal_edge(
+        self,
+        namespace: str,
+        from_id: str,
+        edge_type: str,
+        to_id: str,
+        valid_from: int,
+        valid_until: int = 0,
+        properties: Optional[Dict[str, str]] = None
+    ) -> bool:
+        """Add a temporal edge with validity interval.
+        
+        Args:
+            namespace: Namespace for the edge
+            from_id: Source node ID
+            edge_type: Type of the edge
+            to_id: Target node ID
+            valid_from: Start timestamp (Unix ms)
+            valid_until: End timestamp (Unix ms), 0 = no expiry
+            properties: Optional edge properties
+            
+        Returns:
+            True if successful
+        """
+        stub = self._get_stub("GraphService")
+        from . import toondb_pb2
+        
+        response = stub.AddTemporalEdge(toondb_pb2.AddTemporalEdgeRequest(
+            namespace=namespace,
+            from_id=from_id,
+            edge_type=edge_type,
+            to_id=to_id,
+            valid_from=valid_from,
+            valid_until=valid_until,
+            properties=properties or {}
+        ))
+        return response.success
+    
+    def query_temporal_graph(
+        self,
+        namespace: str,
+        node_id: str,
+        mode: str = "CURRENT",
+        timestamp: Optional[int] = None,
+        start_time: Optional[int] = None,
+        end_time: Optional[int] = None,
+        edge_types: Optional[List[str]] = None
+    ) -> List[TemporalEdge]:
+        """Query temporal graph.
+        
+        Args:
+            namespace: Namespace to query
+            node_id: Node to query from
+            mode: Query mode - POINT_IN_TIME, RANGE, or CURRENT
+            timestamp: For POINT_IN_TIME mode
+            start_time: For RANGE mode
+            end_time: For RANGE mode
+            edge_types: Optional filter for edge types
+            
+        Returns:
+            List of temporal edges
+        """
+        stub = self._get_stub("GraphService")
+        from . import toondb_pb2
+        
+        # Map string mode to enum
+        mode_map = {
+            "POINT_IN_TIME": toondb_pb2.TemporalQueryMode.POINT_IN_TIME,
+            "RANGE": toondb_pb2.TemporalQueryMode.RANGE,
+            "CURRENT": toondb_pb2.TemporalQueryMode.CURRENT,
+        }
+        
+        response = stub.QueryTemporalGraph(toondb_pb2.QueryTemporalGraphRequest(
+            namespace=namespace,
+            node_id=node_id,
+            mode=mode_map.get(mode, toondb_pb2.TemporalQueryMode.CURRENT),
+            timestamp=timestamp or 0,
+            start_time=start_time or 0,
+            end_time=end_time or 0,
+            edge_types=edge_types or []
+        ))
+        
+        return [
+            TemporalEdge(
+                from_id=e.from_id,
+                edge_type=e.edge_type,
+                to_id=e.to_id,
+                valid_from=e.valid_from,
+                valid_until=e.valid_until,
+                properties=dict(e.properties)
+            )
+            for e in response.edges
+        ]
 
 
 # Convenience function
