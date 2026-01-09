@@ -2130,7 +2130,7 @@ class Database:
         ttl_seconds: int = 0
     ) -> bool:
         """
-        Store a value in the semantic cache with its embedding (Embedded FFI mode).
+        Store a value in the semantic cache with its embedding.
         
         Args:
             cache_name: Name of the cache
@@ -2153,25 +2153,47 @@ class Database:
         """
         self._check_open()
         
-        import ctypes
-        import numpy as np
+        # Try FFI first if available
+        try:
+            if hasattr(_FFI, 'lib') and _FFI.lib is not None and hasattr(self, '_ptr') and self._ptr is not None:
+                import ctypes
+                import numpy as np
+                
+                emb_array = np.array(embedding, dtype=np.float32)
+                emb_ptr = emb_array.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+                
+                result = _FFI.lib.toondb_cache_put(
+                    self._ptr,
+                    cache_name.encode("utf-8"),
+                    key.encode("utf-8"),
+                    value.encode("utf-8"),
+                    emb_ptr,
+                    len(embedding),
+                    ttl_seconds
+                )
+                
+                if result == 0:
+                    return True
+        except (AttributeError, OSError, TypeError):
+            pass  # Fall through to KV fallback
         
-        # Convert embedding to float32 array
-        emb_array = np.array(embedding, dtype=np.float32)
-        emb_ptr = emb_array.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+        # KV fallback - store as JSON
+        import json
+        import time
+        import hashlib
         
-        result = _FFI.lib.toondb_cache_put(
-            self._ptr,
-            cache_name.encode("utf-8"),
-            key.encode("utf-8"),
-            value.encode("utf-8"),
-            emb_ptr,
-            len(embedding),
-            ttl_seconds
-        )
+        # Create unique cache entry key
+        key_hash = hashlib.md5(key.encode()).hexdigest()[:12]
+        cache_key = f"_cache/{cache_name}/{key_hash}".encode()
         
-        if result != 0:
-            raise DatabaseError(f"Failed to cache put: error code {result}")
+        entry = {
+            "key": key,
+            "value": value,
+            "embedding": embedding,
+            "ttl": ttl_seconds,
+            "created": time.time()
+        }
+        self.put(cache_key, json.dumps(entry).encode())
         return True
     
     def cache_get(
@@ -2181,7 +2203,7 @@ class Database:
         threshold: float = 0.85
     ) -> Optional[str]:
         """
-        Look up a value in the semantic cache by embedding similarity (Embedded FFI mode).
+        Look up a value in the semantic cache by embedding similarity.
         
         Args:
             cache_name: Name of the cache
@@ -2202,30 +2224,77 @@ class Database:
         """
         self._check_open()
         
-        import ctypes
-        import numpy as np
+        # Try FFI first if available
+        try:
+            if hasattr(_FFI, 'lib') and _FFI.lib is not None and hasattr(self, '_ptr') and self._ptr is not None:
+                import ctypes
+                import numpy as np
+                
+                emb_array = np.array(query_embedding, dtype=np.float32)
+                emb_ptr = emb_array.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+                out_len = ctypes.c_size_t()
+                
+                result_ptr = _FFI.lib.toondb_cache_get(
+                    self._ptr,
+                    cache_name.encode("utf-8"),
+                    emb_ptr,
+                    len(query_embedding),
+                    threshold,
+                    ctypes.byref(out_len)
+                )
+                
+                if result_ptr is not None:
+                    try:
+                        return ctypes.c_char_p(result_ptr).value.decode("utf-8")
+                    finally:
+                        _FFI.lib.toondb_free_string(result_ptr)
+        except (AttributeError, OSError, TypeError):
+            pass  # Fall through to KV fallback
         
-        # Convert embedding to float32 array
-        emb_array = np.array(query_embedding, dtype=np.float32)
-        emb_ptr = emb_array.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
-        out_len = ctypes.c_size_t()
+        # KV fallback - scan and compute similarity
+        import json
+        import math
+        import time
         
-        result_ptr = _FFI.lib.toondb_cache_get(
-            self._ptr,
-            cache_name.encode("utf-8"),
-            emb_ptr,
-            len(query_embedding),
-            threshold,
-            ctypes.byref(out_len)
-        )
-        
-        if result_ptr is None:
-            return None  # Cache miss
+        prefix = f"_cache/{cache_name}/".encode()
+        best_match = None
+        best_score = 0.0
         
         try:
-            return ctypes.c_char_p(result_ptr).value.decode("utf-8")
-        finally:
-            _FFI.lib.toondb_free_string(result_ptr)
+            with self.transaction() as txn:
+                for k, v in txn.scan_prefix(prefix):
+                    try:
+                        entry = json.loads(v.decode())
+                        
+                        # Check TTL
+                        if entry.get("ttl", 0) > 0:
+                            if time.time() - entry.get("created", 0) > entry["ttl"]:
+                                continue  # Expired
+                        
+                        # Compute cosine similarity
+                        cached_emb = entry.get("embedding", [])
+                        if len(cached_emb) != len(query_embedding):
+                            continue
+                        
+                        # Cosine similarity
+                        dot_product = sum(q * c for q, c in zip(query_embedding, cached_emb))
+                        query_norm = math.sqrt(sum(x * x for x in query_embedding))
+                        cached_norm = math.sqrt(sum(x * x for x in cached_emb))
+                        
+                        if query_norm > 0 and cached_norm > 0:
+                            score = dot_product / (query_norm * cached_norm)
+                        else:
+                            score = 0.0
+                        
+                        if score >= threshold and score > best_score:
+                            best_match = entry.get("value")
+                            best_score = score
+                    except (json.JSONDecodeError, KeyError):
+                        continue
+        except Exception:
+            pass  # Return None on any error
+        
+        return best_match
 
     # =========================================================================
     # Trace Operations (FFI) - Observability
