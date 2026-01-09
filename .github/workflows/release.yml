@@ -250,6 +250,15 @@ jobs:
   build-sdist:
     name: Build Source Distribution
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            archive_ext: tar.gz
+          - target: aarch64-apple-darwin
+            archive_ext: tar.gz
+          - target: x86_64-pc-windows-msvc
+            archive_ext: zip
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -259,16 +268,81 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Create directory structure
+        run: |
+          mkdir -p src/toondb/_bin/${{ matrix.target }}
+          mkdir -p src/toondb/lib/${{ matrix.target }}
+
+      - name: Download binaries from main ToonDB release
+        shell: bash
+        run: |
+          # Use toondb_version if provided, otherwise use version
+          VERSION="${{ inputs.toondb_version }}"
+          if [ -z "$VERSION" ]; then
+            VERSION="${{ inputs.version }}"
+          fi
+          
+          TAG="v${VERSION}"
+          TARGET="${{ matrix.target }}"
+          
+          if [ "${{ matrix.archive_ext }}" = "zip" ]; then
+            ASSET_NAME="toondb-${VERSION}-${TARGET}.zip"
+          else
+            ASSET_NAME="toondb-${VERSION}-${TARGET}.tar.gz"
+          fi
+          
+          DOWNLOAD_URL="https://github.com/${{ env.TOONDB_REPO }}/releases/download/${TAG}/${ASSET_NAME}"
+          echo "Downloading ToonDB binaries for sdist:"
+          echo "  URL: $DOWNLOAD_URL"
+          
+          curl -L -f -o release-archive.${{ matrix.archive_ext }} "$DOWNLOAD_URL"
+          
+          # Extract the archive
+          if [ "${{ matrix.archive_ext }}" = "zip" ]; then
+            unzip -o release-archive.zip
+          else
+            tar -xzf release-archive.tar.gz
+          fi
+
+      - name: Copy binaries to SDK
+        shell: bash
+        run: |
+          TARGET="${{ matrix.target }}"
+          
+          # Copy binaries
+          if [ "$TARGET" = "x86_64-pc-windows-msvc" ]; then
+            # Windows binaries
+            find . -maxdepth 2 -name "toondb-bulk.exe" -type f -exec cp {} src/toondb/_bin/${TARGET}/ \;
+            find . -maxdepth 2 -name "toondb-grpc-server.exe" -type f -exec cp {} src/toondb/_bin/${TARGET}/ \;
+            find . -maxdepth 2 -name "toondb_storage.dll" -type f -exec cp {} src/toondb/lib/${TARGET}/ \;
+            find . -maxdepth 2 -name "toondb_index.dll" -type f -exec cp {} src/toondb/lib/${TARGET}/ \;
+          else
+            # Unix binaries
+            find . -maxdepth 2 -name "toondb-bulk" -type f -exec cp {} src/toondb/_bin/${TARGET}/ \;
+            find . -maxdepth 2 -name "toondb-server" -type f -exec cp {} src/toondb/_bin/${TARGET}/ \; || true
+            find . -maxdepth 2 -name "toondb-grpc-server" -type f -exec cp {} src/toondb/_bin/${TARGET}/ \;
+            find . -maxdepth 2 -name "libtoondb_storage*" -type f -exec cp {} src/toondb/lib/${TARGET}/ \;
+            find . -maxdepth 2 -name "libtoondb_index*" -type f -exec cp {} src/toondb/lib/${TARGET}/ \;
+            chmod +x src/toondb/_bin/${TARGET}/* 2>/dev/null || true
+          fi
+          
+          echo "=== Binaries for ${TARGET} ==="
+          ls -la src/toondb/_bin/${TARGET}/ 2>/dev/null || echo "No binaries"
+          echo "=== Libraries for ${TARGET} ==="
+          ls -la src/toondb/lib/${TARGET}/ 2>/dev/null || echo "No libraries"
+
       - name: Update package version
         run: |
           sed -i 's/version = ".*"/version = "${{ inputs.version }}"/' pyproject.toml
 
-      - name: Build sdist
+      - name: Build sdist (only first target)
+        if: matrix.target == 'x86_64-unknown-linux-gnu'
         run: |
           pip install build
           python -m build --sdist
 
       - name: Upload sdist artifact
+        if: matrix.target == 'x86_64-unknown-linux-gnu'
         uses: actions/upload-artifact@v4
         with:
           name: sdist

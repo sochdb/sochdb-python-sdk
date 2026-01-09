@@ -1962,3 +1962,498 @@ class Database:
         finally:
             # Free the C string
             _FFI.lib.toondb_free_string(result_ptr)
+
+    # =========================================================================
+    # Graph Overlay Operations (FFI) - Nodes, Edges, Traversal
+    # =========================================================================
+    
+    def add_node(
+        self,
+        namespace: str,
+        node_id: str,
+        node_type: str,
+        properties: Optional[Dict[str, str]] = None
+    ) -> bool:
+        """
+        Add a node to the graph overlay (Embedded FFI mode).
+        
+        Args:
+            namespace: Namespace for the graph
+            node_id: Unique node identifier
+            node_type: Type of node (e.g., "person", "document", "concept")
+            properties: Optional node properties
+        
+        Returns:
+            True on success
+        
+        Example:
+            db.add_node("default", "alice", "person", {"role": "engineer"})
+            db.add_node("default", "project_x", "project", {"status": "active"})
+        """
+        self._check_open()
+        
+        import json
+        props_json = json.dumps(properties or {}).encode("utf-8")
+        
+        result = _FFI.lib.toondb_graph_add_node(
+            self._ptr,
+            namespace.encode("utf-8"),
+            node_id.encode("utf-8"),
+            node_type.encode("utf-8"),
+            props_json
+        )
+        
+        if result != 0:
+            raise DatabaseError(f"Failed to add node: error code {result}")
+        return True
+    
+    def add_edge(
+        self,
+        namespace: str,
+        from_id: str,
+        edge_type: str,
+        to_id: str,
+        properties: Optional[Dict[str, str]] = None
+    ) -> bool:
+        """
+        Add an edge between nodes (Embedded FFI mode).
+        
+        Args:
+            namespace: Namespace for the graph
+            from_id: Source node ID
+            edge_type: Type of relationship (e.g., "works_on", "knows", "references")
+            to_id: Target node ID
+            properties: Optional edge properties
+        
+        Returns:
+            True on success
+        
+        Example:
+            db.add_edge("default", "alice", "works_on", "project_x")
+            db.add_edge("default", "alice", "knows", "bob", {"since": "2020"})
+        """
+        self._check_open()
+        
+        import json
+        props_json = json.dumps(properties or {}).encode("utf-8")
+        
+        result = _FFI.lib.toondb_graph_add_edge(
+            self._ptr,
+            namespace.encode("utf-8"),
+            from_id.encode("utf-8"),
+            edge_type.encode("utf-8"),
+            to_id.encode("utf-8"),
+            props_json
+        )
+        
+        if result != 0:
+            raise DatabaseError(f"Failed to add edge: error code {result}")
+        return True
+    
+    def traverse(
+        self,
+        namespace: str,
+        start_node: str,
+        max_depth: int = 10,
+        order: str = "bfs"
+    ) -> Tuple[List[Dict], List[Dict]]:
+        """
+        Traverse the graph from a starting node (Embedded FFI mode).
+        
+        Args:
+            namespace: Namespace for the graph
+            start_node: Node ID to start traversal from
+            max_depth: Maximum traversal depth
+            order: "bfs" for breadth-first, "dfs" for depth-first
+        
+        Returns:
+            Tuple of (nodes, edges) where each is a list of dicts
+        
+        Example:
+            nodes, edges = db.traverse("default", "alice", max_depth=2)
+            for node in nodes:
+                print(f"Node: {node['id']} ({node['node_type']})")
+            for edge in edges:
+                print(f"Edge: {edge['from_id']} --{edge['edge_type']}--> {edge['to_id']}")
+        """
+        self._check_open()
+        
+        import json
+        import ctypes
+        
+        order_int = 0 if order.lower() == "bfs" else 1
+        out_len = ctypes.c_size_t()
+        
+        result_ptr = _FFI.lib.toondb_graph_traverse(
+            self._ptr,
+            namespace.encode("utf-8"),
+            start_node.encode("utf-8"),
+            max_depth,
+            order_int,
+            ctypes.byref(out_len)
+        )
+        
+        if result_ptr is None:
+            raise DatabaseError("Failed to traverse graph")
+        
+        try:
+            json_str = ctypes.c_char_p(result_ptr).value.decode("utf-8")
+            data = json.loads(json_str)
+            return data.get("nodes", []), data.get("edges", [])
+        finally:
+            _FFI.lib.toondb_free_string(result_ptr)
+
+    # =========================================================================
+    # Semantic Cache Operations (FFI)
+    # =========================================================================
+    
+    def cache_put(
+        self,
+        cache_name: str,
+        key: str,
+        value: str,
+        embedding: List[float],
+        ttl_seconds: int = 0
+    ) -> bool:
+        """
+        Store a value in the semantic cache with its embedding (Embedded FFI mode).
+        
+        Args:
+            cache_name: Name of the cache
+            key: Cache key (for display/debugging)
+            value: Value to cache
+            embedding: Embedding vector for similarity matching
+            ttl_seconds: Time-to-live in seconds (0 = no expiry)
+        
+        Returns:
+            True on success
+        
+        Example:
+            db.cache_put(
+                "llm_responses",
+                "What is Python?",
+                "Python is a programming language...",
+                embedding=[0.1, 0.2, 0.3, ...],  # 384-dim
+                ttl_seconds=3600
+            )
+        """
+        self._check_open()
+        
+        import ctypes
+        import numpy as np
+        
+        # Convert embedding to float32 array
+        emb_array = np.array(embedding, dtype=np.float32)
+        emb_ptr = emb_array.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+        
+        result = _FFI.lib.toondb_cache_put(
+            self._ptr,
+            cache_name.encode("utf-8"),
+            key.encode("utf-8"),
+            value.encode("utf-8"),
+            emb_ptr,
+            len(embedding),
+            ttl_seconds
+        )
+        
+        if result != 0:
+            raise DatabaseError(f"Failed to cache put: error code {result}")
+        return True
+    
+    def cache_get(
+        self,
+        cache_name: str,
+        query_embedding: List[float],
+        threshold: float = 0.85
+    ) -> Optional[str]:
+        """
+        Look up a value in the semantic cache by embedding similarity (Embedded FFI mode).
+        
+        Args:
+            cache_name: Name of the cache
+            query_embedding: Query embedding to match against cached entries
+            threshold: Minimum cosine similarity threshold (0.0 to 1.0)
+        
+        Returns:
+            Cached value if similarity >= threshold, None otherwise
+        
+        Example:
+            result = db.cache_get(
+                "llm_responses",
+                query_embedding=[0.12, 0.18, ...],  # Similar to "What is Python?"
+                threshold=0.85
+            )
+            if result:
+                print(f"Cache hit: {result}")
+        """
+        self._check_open()
+        
+        import ctypes
+        import numpy as np
+        
+        # Convert embedding to float32 array
+        emb_array = np.array(query_embedding, dtype=np.float32)
+        emb_ptr = emb_array.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+        out_len = ctypes.c_size_t()
+        
+        result_ptr = _FFI.lib.toondb_cache_get(
+            self._ptr,
+            cache_name.encode("utf-8"),
+            emb_ptr,
+            len(query_embedding),
+            threshold,
+            ctypes.byref(out_len)
+        )
+        
+        if result_ptr is None:
+            return None  # Cache miss
+        
+        try:
+            return ctypes.c_char_p(result_ptr).value.decode("utf-8")
+        finally:
+            _FFI.lib.toondb_free_string(result_ptr)
+
+    # =========================================================================
+    # Trace Operations (FFI) - Observability
+    # =========================================================================
+    
+    def start_trace(self, name: str) -> Tuple[str, str]:
+        """
+        Start a new trace (Embedded FFI mode).
+        
+        Args:
+            name: Name of the trace (e.g., "user_request", "batch_job")
+        
+        Returns:
+            Tuple of (trace_id, root_span_id)
+        
+        Example:
+            trace_id, root_span = db.start_trace("user_query")
+            # ... do work ...
+            db.end_span(trace_id, root_span, status="ok")
+        """
+        self._check_open()
+        
+        import ctypes
+        
+        trace_id_ptr = ctypes.c_char_p()
+        span_id_ptr = ctypes.c_char_p()
+        
+        result = _FFI.lib.toondb_trace_start(
+            self._ptr,
+            name.encode("utf-8"),
+            ctypes.byref(trace_id_ptr),
+            ctypes.byref(span_id_ptr)
+        )
+        
+        if result != 0:
+            raise DatabaseError(f"Failed to start trace: error code {result}")
+        
+        try:
+            trace_id = trace_id_ptr.value.decode("utf-8")
+            span_id = span_id_ptr.value.decode("utf-8")
+            return trace_id, span_id
+        finally:
+            _FFI.lib.toondb_free_string(trace_id_ptr)
+            _FFI.lib.toondb_free_string(span_id_ptr)
+    
+    def start_span(
+        self,
+        trace_id: str,
+        parent_span_id: str,
+        name: str
+    ) -> str:
+        """
+        Start a child span within a trace (Embedded FFI mode).
+        
+        Args:
+            trace_id: ID of the parent trace
+            parent_span_id: ID of the parent span
+            name: Name of this span (e.g., "database_query", "llm_call")
+        
+        Returns:
+            span_id for the new span
+        
+        Example:
+            trace_id, root_span = db.start_trace("user_query")
+            db_span = db.start_span(trace_id, root_span, "database_lookup")
+            # ... do database work ...
+            duration = db.end_span(trace_id, db_span, status="ok")
+            print(f"DB lookup took {duration}µs")
+        """
+        self._check_open()
+        
+        import ctypes
+        
+        span_id_ptr = ctypes.c_char_p()
+        
+        result = _FFI.lib.toondb_trace_span_start(
+            self._ptr,
+            trace_id.encode("utf-8"),
+            parent_span_id.encode("utf-8"),
+            name.encode("utf-8"),
+            ctypes.byref(span_id_ptr)
+        )
+        
+        if result != 0:
+            raise DatabaseError(f"Failed to start span: error code {result}")
+        
+        try:
+            return span_id_ptr.value.decode("utf-8")
+        finally:
+            _FFI.lib.toondb_free_string(span_id_ptr)
+    
+    def end_span(
+        self,
+        trace_id: str,
+        span_id: str,
+        status: str = "ok"
+    ) -> int:
+        """
+        End a span and record its duration (Embedded FFI mode).
+        
+        Args:
+            trace_id: ID of the trace
+            span_id: ID of the span to end
+            status: "ok", "error", or "unset"
+        
+        Returns:
+            Duration in microseconds
+        
+        Example:
+            duration = db.end_span(trace_id, span_id, status="ok")
+            print(f"Operation took {duration}µs")
+        """
+        self._check_open()
+        
+        status_map = {"unset": 0, "ok": 1, "error": 2}
+        status_int = status_map.get(status.lower(), 0)
+        
+        duration = _FFI.lib.toondb_trace_span_end(
+            self._ptr,
+            trace_id.encode("utf-8"),
+            span_id.encode("utf-8"),
+            status_int
+        )
+        
+        if duration < 0:
+            raise DatabaseError("Failed to end span")
+        
+        return duration
+    
+    # =========================================================================
+    # Vector Index Operations (convenience methods)
+    # =========================================================================
+    
+    def create_index(self, name: str, dimension: int, max_connections: int = 16, ef_construction: int = 200):
+        """
+        Create a vector index (HNSW).
+        
+        This is a convenience method that creates a VectorIndex and stores it
+        for later use. For more control, use the VectorIndex class directly.
+        
+        Args:
+            name: Index name
+            dimension: Vector dimension
+            max_connections: HNSW max_connections parameter (connections per layer, default=16)
+            ef_construction: HNSW ef_construction parameter (default=200)
+        
+        Example:
+            db.create_index('embeddings', 384)
+            db.insert_vectors('embeddings', [1, 2, 3], [[0.1, 0.2, ...], ...])
+            results = db.search('embeddings', [0.1, 0.2, ...], k=5)
+        """
+        from .vector import VectorIndex
+        
+        if not hasattr(self, '_vector_indices'):
+            self._vector_indices = {}
+        
+        index = VectorIndex(dimension, max_connections=max_connections, ef_construction=ef_construction)
+        self._vector_indices[name] = index
+        
+        # Store index metadata in database
+        import json
+        metadata = {
+            'dimension': dimension,
+            'max_connections': max_connections,
+            'ef_construction': ef_construction
+        }
+        self.put(f'_indices/{name}/meta'.encode(), json.dumps(metadata).encode())
+    
+    def insert_vectors(self, index_name: str, ids: list, vectors: list):
+        """
+        Insert vectors into an index.
+        
+        Args:
+            index_name: Name of the index
+            ids: List of integer IDs
+            vectors: List of vectors (each a list of floats)
+        
+        Example:
+            db.insert_vectors('embeddings', [1, 2], [[0.1, 0.2, ...], [0.3, 0.4, ...]])
+        """
+        if not hasattr(self, '_vector_indices'):
+            self._vector_indices = {}
+        
+        if index_name not in self._vector_indices:
+            # Try to load from metadata
+            metadata_key = f'_indices/{index_name}/meta'.encode()
+            metadata_bytes = self.get(metadata_key)
+            if metadata_bytes is None:
+                raise DatabaseError(f"Index '{index_name}' not found. Create it first with create_index()")
+            
+            import json
+            from .vector import VectorIndex
+            metadata = json.loads(metadata_bytes.decode())
+            index = VectorIndex(
+                metadata['dimension'],
+                max_connections=metadata.get('max_connections', 16),
+                ef_construction=metadata.get('ef_construction', 200)
+            )
+            self._vector_indices[index_name] = index
+        
+        index = self._vector_indices[index_name]
+        import numpy as np
+        index.insert_batch(np.array(ids, dtype=np.uint64), np.array(vectors, dtype=np.float32))
+    
+    def search(self, index_name: str, query: list, k: int = 10):
+        """
+        Search for nearest neighbors in an index.
+        
+        Args:
+            index_name: Name of the index
+            query: Query vector (list of floats)
+            k: Number of results to return
+        
+        Returns:
+            List of (id, distance) tuples
+        
+        Example:
+            results = db.search('embeddings', [0.1, 0.2, ...], k=5)
+            for id, distance in results:
+                print(f'ID: {id}, Distance: {distance}')
+        """
+        if not hasattr(self, '_vector_indices'):
+            self._vector_indices = {}
+        
+        if index_name not in self._vector_indices:
+            # Try to load from metadata
+            metadata_key = f'_indices/{index_name}/meta'.encode()
+            metadata_bytes = self.get(metadata_key)
+            if metadata_bytes is None:
+                raise DatabaseError(f"Index '{index_name}' not found. Create it first with create_index()")
+            
+            import json
+            from .vector import VectorIndex
+            metadata = json.loads(metadata_bytes.decode())
+            index = VectorIndex(
+                metadata['dimension'],
+                max_connections=metadata.get('max_connections', 16),
+                ef_construction=metadata.get('ef_construction', 200)
+            )
+            self._vector_indices[index_name] = index
+        
+        index = self._vector_indices[index_name]
+        import numpy as np
+        query_array = np.array(query, dtype=np.float32)
+        return index.search(query_array, k)

@@ -1,7 +1,38 @@
-# ToonDB Python SDK v0.3.4
+# ToonDB Python SDK v0.3.5
 
 **Dual-mode architecture: Embedded (FFI) + Server (gRPC/IPC)**  
 Choose the deployment mode that fits your needs.
+
+## What's New in 0.3.5
+
+### 🔢 Vector Operations in Database Class
+No need for separate `VectorIndex` class anymore - vector operations are now directly available on the `Database` class:
+
+```python
+from toondb import Database
+
+db = Database.open('./mydb')
+
+# Create vector index
+db.create_index('embeddings', dimension=384)
+
+# Insert vectors
+db.insert_vectors('embeddings', [1, 2, 3], [
+    [0.1, 0.2, ...],  # vector 1
+    [0.3, 0.4, ...],  # vector 2
+    [0.5, 0.6, ...],  # vector 3
+])
+
+# Search
+results = db.search('embeddings', [0.1, 0.2, ...], k=5)
+for id, distance in results:
+    print(f'ID: {id}, Distance: {distance:.4f}')
+```
+
+### 🏗️ Works with Tokio-Optional Architecture
+- Supports both sync and async Rust backend (v0.3.5)
+- No breaking changes to existing code
+- Smaller binaries (~500KB reduction)
 
 ## Architecture: Flexible Deployment
 
@@ -71,6 +102,19 @@ with Database.open("./mydb") as db:
     # Key-value operations
     db.put(b"key", b"value")
     value = db.get(b"key")
+    
+    # Vector operations (NEW in 0.3.5)
+    db.create_index('embeddings', dimension=384)
+    db.insert_vectors('embeddings', [1, 2, 3], [
+        [0.1, 0.2, ...],  # vector 1
+        [0.3, 0.4, ...],  # vector 2
+        [0.5, 0.6, ...],  # vector 3
+    ])
+    
+    # Search for similar vectors
+    results = db.search('embeddings', [0.1, 0.2, ...], k=5)
+    for id, distance in results:
+        print(f'ID: {id}, Distance: {distance}')
     
     # Namespaces
     ns = db.namespace("tenant_123")
