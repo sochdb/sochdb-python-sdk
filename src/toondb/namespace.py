@@ -561,19 +561,216 @@ class Collection:
         return self.search(request)
     
     def _vector_search(self, request: SearchRequest) -> SearchResults:
-        """Internal vector search implementation."""
-        # TODO: Implement actual vector search via FFI
-        return SearchResults(results=[], total_count=0, query_time_ms=0.0)
+        """Internal vector search implementation using brute-force cosine similarity."""
+        import time
+        import math
+        
+        start_time = time.time()
+        
+        # Get all documents from collection
+        all_docs = []
+        prefix = self._vectors_prefix()
+        with self._db.transaction() as txn:
+            for key, value in txn.scan_prefix(prefix):
+                doc = json.loads(value.decode())
+                all_docs.append(doc)
+        
+        if not all_docs or request.vector is None:
+            return SearchResults(results=[], total_count=0, query_time_ms=0.0)
+        
+        # Compute cosine similarity for each document
+        query_vec = request.vector
+        query_norm = math.sqrt(sum(x * x for x in query_vec))
+        
+        scored_docs = []
+        for doc in all_docs:
+            doc_vec = doc.get("vector", [])
+            if len(doc_vec) != len(query_vec):
+                continue
+            
+            # Cosine similarity
+            dot_product = sum(q * d for q, d in zip(query_vec, doc_vec))
+            doc_norm = math.sqrt(sum(x * x for x in doc_vec))
+            
+            if query_norm > 0 and doc_norm > 0:
+                similarity = dot_product / (query_norm * doc_norm)
+            else:
+                similarity = 0.0
+            
+            # Apply min_score filter
+            if request.min_score is not None and similarity < request.min_score:
+                continue
+            
+            # Apply metadata filter
+            if request.filter:
+                metadata = doc.get("metadata", {})
+                if not self._matches_filter(metadata, request.filter):
+                    continue
+            
+            scored_docs.append((similarity, doc))
+        
+        # Sort by score descending
+        scored_docs.sort(key=lambda x: x[0], reverse=True)
+        
+        # Take top k
+        top_k = scored_docs[:request.k]
+        
+        # Build results
+        results = []
+        for score, doc in top_k:
+            result = SearchResult(
+                id=doc["id"],
+                score=score,
+                metadata=doc.get("metadata") if request.include_metadata else None,
+                vector=doc.get("vector") if request.include_vectors else None,
+            )
+            results.append(result)
+        
+        query_time_ms = (time.time() - start_time) * 1000
+        
+        return SearchResults(
+            results=results,
+            total_count=len(scored_docs),
+            query_time_ms=query_time_ms,
+            vector_results=len(results),
+        )
+    
+    def _matches_filter(self, metadata: Dict[str, Any], filter_dict: Dict[str, Any]) -> bool:
+        """Check if metadata matches filter criteria."""
+        for key, value in filter_dict.items():
+            if key not in metadata:
+                return False
+            if metadata[key] != value:
+                return False
+        return True
     
     def _keyword_search(self, request: SearchRequest) -> SearchResults:
-        """Internal keyword search implementation."""
-        # TODO: Implement actual BM25 search via FFI
-        return SearchResults(results=[], total_count=0, query_time_ms=0.0)
+        """Internal keyword search implementation using simple text matching."""
+        import time
+        
+        start_time = time.time()
+        
+        if not request.text_query:
+            return SearchResults(results=[], total_count=0, query_time_ms=0.0)
+        
+        # Get all documents
+        all_docs = []
+        prefix = self._vectors_prefix()
+        with self._db.transaction() as txn:
+            for key, value in txn.scan_prefix(prefix):
+                doc = json.loads(value.decode())
+                all_docs.append(doc)
+        
+        # Simple keyword matching on content and metadata
+        query_lower = request.text_query.lower()
+        query_terms = query_lower.split()
+        
+        scored_docs = []
+        for doc in all_docs:
+            # Search in content field
+            content = doc.get("content", "") or ""
+            metadata = doc.get("metadata", {})
+            
+            # Also search in metadata text fields
+            text_fields = [content]
+            for v in metadata.values():
+                if isinstance(v, str):
+                    text_fields.append(v)
+            
+            combined_text = " ".join(text_fields).lower()
+            
+            # Simple term frequency scoring
+            score = 0.0
+            for term in query_terms:
+                if term in combined_text:
+                    score += combined_text.count(term)
+            
+            if score > 0:
+                # Apply metadata filter
+                if request.filter:
+                    if not self._matches_filter(metadata, request.filter):
+                        continue
+                scored_docs.append((score, doc))
+        
+        # Sort by score descending
+        scored_docs.sort(key=lambda x: x[0], reverse=True)
+        
+        # Take top k
+        top_k = scored_docs[:request.k]
+        
+        # Build results
+        results = []
+        for score, doc in top_k:
+            result = SearchResult(
+                id=doc["id"],
+                score=score,
+                metadata=doc.get("metadata") if request.include_metadata else None,
+                vector=doc.get("vector") if request.include_vectors else None,
+            )
+            results.append(result)
+        
+        query_time_ms = (time.time() - start_time) * 1000
+        
+        return SearchResults(
+            results=results,
+            total_count=len(scored_docs),
+            query_time_ms=query_time_ms,
+            keyword_results=len(results),
+        )
     
     def _hybrid_search(self, request: SearchRequest) -> SearchResults:
-        """Internal hybrid search implementation."""
-        # TODO: Implement RRF fusion via FFI
-        return SearchResults(results=[], total_count=0, query_time_ms=0.0)
+        """Internal hybrid search using RRF (Reciprocal Rank Fusion)."""
+        import time
+        
+        start_time = time.time()
+        
+        # Get vector and keyword results separately
+        vector_results = self._vector_search(request)
+        keyword_results = self._keyword_search(request)
+        
+        # RRF fusion
+        rrf_k = request.rrf_k
+        alpha = request.alpha  # Weight for vector results
+        
+        # Build score maps
+        scores = {}  # id -> (rrf_score, doc_data)
+        
+        # Add vector results
+        for rank, result in enumerate(vector_results.results):
+            rrf_score = alpha / (rrf_k + rank + 1)
+            scores[result.id] = (rrf_score, result)
+        
+        # Add keyword results
+        for rank, result in enumerate(keyword_results.results):
+            rrf_score = (1 - alpha) / (rrf_k + rank + 1)
+            if result.id in scores:
+                existing_score, existing_result = scores[result.id]
+                scores[result.id] = (existing_score + rrf_score, existing_result)
+            else:
+                scores[result.id] = (rrf_score, result)
+        
+        # Sort by combined RRF score
+        sorted_results = sorted(scores.items(), key=lambda x: x[1][0], reverse=True)
+        
+        # Take top k and build results
+        results = []
+        for doc_id, (score, result) in sorted_results[:request.k]:
+            results.append(SearchResult(
+                id=doc_id,
+                score=score,
+                metadata=result.metadata,
+                vector=result.vector,
+            ))
+        
+        query_time_ms = (time.time() - start_time) * 1000
+        
+        return SearchResults(
+            results=results,
+            total_count=len(sorted_results),
+            query_time_ms=query_time_ms,
+            vector_results=len(vector_results.results),
+            keyword_results=len(keyword_results.results),
+        )
     
     # ========================================================================
     # Other Operations
