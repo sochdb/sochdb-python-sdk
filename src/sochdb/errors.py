@@ -93,6 +93,13 @@ class ErrorCode(IntEnum):
     NOT_IMPLEMENTED = 9002
     STORAGE_ERROR = 9003
     FFI_ERROR = 9004
+    
+    # Lock/Concurrency errors (10xxx) - v0.4.1
+    DATABASE_LOCKED = 10001
+    LOCK_TIMEOUT = 10002
+    EPOCH_MISMATCH = 10003
+    SPLIT_BRAIN = 10004
+    STALE_LOCK = 10005
 
 
 class SochDBError(Exception):
@@ -343,6 +350,65 @@ class EmbeddingError(SochDBError):
 
 
 # ============================================================================
+# Lock/Concurrency Errors (v0.4.1)
+# ============================================================================
+
+class LockError(SochDBError):
+    """Base class for lock-related errors."""
+    code = ErrorCode.DATABASE_LOCKED
+
+
+class DatabaseLockedError(LockError):
+    """Database is locked by another process."""
+    code = ErrorCode.DATABASE_LOCKED
+    
+    def __init__(self, path: str, holder_pid: Optional[int] = None):
+        msg = f"Database at '{path}' is locked"
+        if holder_pid:
+            msg += f" by process {holder_pid}"
+        super().__init__(
+            msg,
+            remediation="Close the other process or wait for the lock to be released",
+            context={"path": path, "holder_pid": holder_pid},
+        )
+
+
+class LockTimeoutError(LockError):
+    """Timed out waiting for database lock."""
+    code = ErrorCode.LOCK_TIMEOUT
+    
+    def __init__(self, path: str, timeout_secs: float):
+        super().__init__(
+            f"Timed out after {timeout_secs}s waiting for lock on '{path}'",
+            remediation="Increase timeout or check for deadlocks",
+            context={"path": path, "timeout_secs": timeout_secs},
+        )
+
+
+class EpochMismatchError(LockError):
+    """WAL epoch mismatch - stale writer detected."""
+    code = ErrorCode.EPOCH_MISMATCH
+    
+    def __init__(self, expected: int, actual: int):
+        super().__init__(
+            f"Epoch mismatch: expected {expected}, found {actual}",
+            remediation="Another writer has taken over. Re-open the database.",
+            context={"expected": expected, "actual": actual},
+        )
+
+
+class SplitBrainError(LockError):
+    """Split-brain condition detected - multiple writers."""
+    code = ErrorCode.SPLIT_BRAIN
+    
+    def __init__(self, message: str = "Split-brain detected: multiple active writers"):
+        super().__init__(
+            message,
+            remediation="Stop all writers, verify data integrity, then restart with single writer",
+        )
+
+
+# ============================================================================
 # Error Mapping from Rust
 # ============================================================================
 
@@ -359,6 +425,11 @@ _ERROR_MAP: Dict[int, type] = {
     ErrorCode.INVALID_VECTOR_DIMENSION: DimensionMismatchError,
     ErrorCode.SCOPE_VIOLATION: ScopeViolationError,
     ErrorCode.QUERY_TIMEOUT: QueryTimeoutError,
+    # Lock errors (v0.4.1)
+    ErrorCode.DATABASE_LOCKED: DatabaseLockedError,
+    ErrorCode.LOCK_TIMEOUT: LockTimeoutError,
+    ErrorCode.EPOCH_MISMATCH: EpochMismatchError,
+    ErrorCode.SPLIT_BRAIN: SplitBrainError,
 }
 
 
@@ -377,6 +448,12 @@ def from_rust_error(code: int, message: str, context: Optional[Dict[str, Any]] =
         return CollectionNotFoundError(context["collection"], context.get("namespace"))
     if error_class == DimensionMismatchError and context:
         return DimensionMismatchError(context.get("expected", 0), context.get("actual", 0))
+    if error_class == DatabaseLockedError and context and "path" in context:
+        return DatabaseLockedError(context["path"], context.get("holder_pid"))
+    if error_class == LockTimeoutError and context:
+        return LockTimeoutError(context.get("path", ""), context.get("timeout_secs", 0))
+    if error_class == EpochMismatchError and context:
+        return EpochMismatchError(context.get("expected", 0), context.get("actual", 0))
     
     # Generic case
     try:

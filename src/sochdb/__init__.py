@@ -32,7 +32,7 @@ Example (Server Mode):
     client.put_kv("key", b"value")
 """
 
-__version__ = "0.4.0"
+__version__ = "0.4.1"
 
 # Embedded mode (FFI)
 from .database import Database, Transaction
@@ -70,6 +70,12 @@ from .errors import (
     ErrorCode,
     NamespaceNotFoundError,
     NamespaceExistsError,
+    # Lock errors (v0.4.1)
+    LockError,
+    DatabaseLockedError,
+    LockTimeoutError,
+    EpochMismatchError,
+    SplitBrainError,
 )
 from .query import Query, SQLQueryResult
 
@@ -121,4 +127,10 @@ __all__ = [
     "NamespaceNotFoundError",
     "NamespaceExistsError",
     "ErrorCode",
+    # Lock errors (v0.4.1)
+    "LockError",
+    "DatabaseLockedError",
+    "LockTimeoutError",
+    "EpochMismatchError",
+    "SplitBrainError",
 ]
