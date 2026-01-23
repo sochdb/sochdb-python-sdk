@@ -207,4 +207,6 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 c_code.py
+c-code.py
 toondb_python.txt
+sochdb_python.txt

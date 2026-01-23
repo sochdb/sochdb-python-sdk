@@ -533,6 +533,12 @@ class Transaction:
         self._lib.sochdb_free_bytes(val_out, len_out)
         return data
 
+    def delete_path(self, path: str) -> None:
+        """Delete a value at a path."""
+        if self._committed or self._aborted:
+            raise TransactionError("Transaction already completed")
+        self.delete(path.encode("utf-8"))
+
     def scan(self, start: bytes = b"", end: bytes = b""):
         """
         Scan keys in range [start, end).
@@ -852,8 +858,8 @@ class Transaction:
             raise TransactionError("Transaction already completed")
         
         from .sql_engine import SQLExecutor
-        # Create executor that uses the transaction's database
-        executor = SQLExecutor(self._db)
+        # Create executor that uses the transaction context
+        executor = SQLExecutor(self)
         return executor.execute(sql)
     
     def __enter__(self) -> "Transaction":

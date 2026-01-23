@@ -1,0 +1,178 @@
+[
+  {
+    "database": "SochDB",
+    "dimension": 384,
+    "n_vectors": 10000,
+    "recall_at_k": 0.9590000000000001,
+    "search_p50_ms": 1.573207999999937,
+    "search_p95_ms": 1.743750000000155,
+    "search_p99_ms": 2.344374999999843,
+    "qps": 625.0665539613329,
+    "insert_rate": 1750.4426705409796
+  },
+  {
+    "database": "ChromaDB",
+    "dimension": 384,
+    "n_vectors": 10000,
+    "recall_at_k": 0.764,
+    "search_p50_ms": 1.3410829999997986,
+    "search_p95_ms": 1.4911249999993714,
+    "search_p99_ms": 5.492124999999959,
+    "qps": 720.1815733305755,
+    "insert_rate": 3648.8042889872922
+  },
+  {
+    "database": "LanceDB",
+    "dimension": 384,
+    "n_vectors": 10000,
+    "recall_at_k": 0.239,
+    "search_p50_ms": 3.873125000000144,
+    "search_p95_ms": 4.24479199999972,
+    "search_p99_ms": 20.505166999999602,
+    "qps": 244.9147793309215,
+    "insert_rate": 99341.0381116628
+  },
+  {
+    "database": "FAISS",
+    "dimension": 384,
+    "n_vectors": 10000,
+    "recall_at_k": 0.993,
+    "search_p50_ms": 0.28287499999990473,
+    "search_p95_ms": 0.34041700000031483,
+    "search_p99_ms": 1.3964580000003224,
+    "qps": 3337.6349885613527,
+    "insert_rate": 5684.980856182275
+  },
+  {
+    "database": "SochDB",
+    "dimension": 768,
+    "n_vectors": 10000,
+    "recall_at_k": 0.9280000000000002,
+    "search_p50_ms": 2.5242910000002894,
+    "search_p95_ms": 2.990332999999623,
+    "search_p99_ms": 3.4067090000000633,
+    "qps": 390.0126876977368,
+    "insert_rate": 1760.6228685667368
+  },
+  {
+    "database": "ChromaDB",
+    "dimension": 768,
+    "n_vectors": 10000,
+    "recall_at_k": 0.684,
+    "search_p50_ms": 2.5858330000012586,
+    "search_p95_ms": 2.8401669999986723,
+    "search_p99_ms": 4.30741599999962,
+    "qps": 382.2047399395646,
+    "insert_rate": 1731.9671193815461
+  },
+  {
+    "database": "LanceDB",
+    "dimension": 768,
+    "n_vectors": 10000,
+    "recall_at_k": 0.21200000000000002,
+    "search_p50_ms": 4.650207999997491,
+    "search_p95_ms": 4.915709000002266,
+    "search_p99_ms": 6.169082999999631,
+    "qps": 213.23873358003422,
+    "insert_rate": 85779.4472135667
+  },
+  {
+    "database": "FAISS",
+    "dimension": 768,
+    "n_vectors": 10000,
+    "recall_at_k": 0.9740000000000001,
+    "search_p50_ms": 0.49083300000063446,
+    "search_p95_ms": 0.5275839999967502,
+    "search_p99_ms": 0.6567080000010606,
+    "qps": 2007.6510376450485,
+    "insert_rate": 1747.0391799739957
+  },
+  {
+    "database": "SochDB",
+    "dimension": 1536,
+    "n_vectors": 10000,
+    "recall_at_k": 0.912,
+    "search_p50_ms": 4.131583999999577,
+    "search_p95_ms": 4.608165999997027,
+    "search_p99_ms": 5.075082999994152,
+    "qps": 239.4022633018378,
+    "insert_rate": 1832.1998963066462
+  },
+  {
+    "database": "ChromaDB",
+    "dimension": 1536,
+    "n_vectors": 10000,
+    "recall_at_k": 0.636,
+    "search_p50_ms": 5.160750000001713,
+    "search_p95_ms": 5.748332999999661,
+    "search_p99_ms": 7.285750000001201,
+    "qps": 191.25696113657966,
+    "insert_rate": 825.864137824384
+  },
+  {
+    "database": "LanceDB",
+    "dimension": 1536,
+    "n_vectors": 10000,
+    "recall_at_k": 0.21100000000000005,
+    "search_p50_ms": 6.501624999998512,
+    "search_p95_ms": 7.186208000000249,
+    "search_p99_ms": 11.332666999997798,
+    "qps": 151.104422450342,
+    "insert_rate": 44384.82083512147
+  },
+  {
+    "database": "FAISS",
+    "dimension": 1536,
+    "n_vectors": 10000,
+    "recall_at_k": 0.9420000000000002,
+    "search_p50_ms": 1.0185000000006994,
+    "search_p95_ms": 1.158082999992871,
+    "search_p99_ms": 1.7713750000041273,
+    "qps": 959.4020576573291,
+    "insert_rate": 828.2102376532417
+  },
+  {
+    "database": "SochDB",
+    "dimension": 3072,
+    "n_vectors": 10000,
+    "recall_at_k": 0.8800000000000001,
+    "search_p50_ms": 6.9597919999893065,
+    "search_p95_ms": 7.766875000001505,
+    "search_p99_ms": 8.005042000007734,
+    "qps": 141.68964427556327,
+    "insert_rate": 1897.1003144579993
+  },
+  {
+    "database": "ChromaDB",
+    "dimension": 3072,
+    "n_vectors": 10000,
+    "recall_at_k": 0.565,
+    "search_p50_ms": 10.306458999991719,
+    "search_p95_ms": 12.263915999994879,
+    "search_p99_ms": 22.63912499999776,
+    "qps": 93.96598984250255,
+    "insert_rate": 399.4662192565118
+  },
+  {
+    "database": "LanceDB",
+    "dimension": 3072,
+    "n_vectors": 10000,
+    "recall_at_k": 0.23600000000000004,
+    "search_p50_ms": 9.628083000009724,
+    "search_p95_ms": 10.509499999997729,
+    "search_p99_ms": 14.641834000002518,
+    "qps": 101.86390087052418,
+    "insert_rate": 17642.76358895262
+  },
+  {
+    "database": "FAISS",
+    "dimension": 3072,
+    "n_vectors": 10000,
+    "recall_at_k": 0.8930000000000002,
+    "search_p50_ms": 1.8354580000163878,
+    "search_p95_ms": 1.972292000004927,
+    "search_p99_ms": 2.3688750000019354,
+    "qps": 540.4198983704734,
+    "insert_rate": 377.0460865411073
+  }
+]

@@ -4,7 +4,7 @@
 # =============================================================================
 #
 # This script is called by cibuildwheel before building the Python wheel.
-# It compiles toondb-bulk and places it in the correct _bin directory.
+# It compiles SochDB CLI binaries and places them in the correct _bin directory.
 #
 # Usage:
 #   ./scripts/build_rust_binary.sh
@@ -18,11 +18,28 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 SDK_DIR="$PROJECT_DIR"
-WORKSPACE_ROOT="$(dirname "$SDK_DIR")"
+find_workspace_root() {
+    local current="$SDK_DIR"
+    while [[ "$current" != "/" ]]; do
+        if [[ -f "$current/Cargo.toml" ]] && grep -q "\[workspace\]" "$current/Cargo.toml"; then
+            echo "$current"
+            return 0
+        fi
+        current="$(dirname "$current")"
+    done
+    return 1
+}
 
-echo "=== ToonDB Rust Binary Build ==="
+WORKSPACE_ROOT="$(find_workspace_root || true)"
+if [[ -z "$WORKSPACE_ROOT" ]]; then
+    if [[ -f "$(dirname "$SDK_DIR")/sochdb/Cargo.toml" ]] && grep -q "\[workspace\]" "$(dirname "$SDK_DIR")/sochdb/Cargo.toml"; then
+        WORKSPACE_ROOT="$(dirname "$SDK_DIR")/sochdb"
+    fi
+fi
+
+echo "=== SochDB Rust Binary Build ==="
 echo "Project: $PROJECT_DIR"
-echo "Workspace: $WORKSPACE_ROOT"
+echo "Workspace: ${WORKSPACE_ROOT:-unknown}"
 
 # Detect platform and architecture
 detect_platform() {
@@ -49,12 +66,12 @@ detect_platform() {
 }
 
 # Get the binary name for the platform
-get_binary_name() {
+get_binary_names() {
     local platform="$1"
     if [[ "$platform" == windows-* ]]; then
-        echo "toondb-bulk.exe"
+        echo "sochdb-bulk.exe sochdb-server.exe sochdb-grpc-server.exe"
     else
-        echo "toondb-bulk"
+        echo "sochdb-bulk sochdb-server sochdb-grpc-server"
     fi
 }
 
@@ -77,13 +94,12 @@ get_rust_target() {
 
 # Main build logic
 main() {
-    local platform target binary_name bin_dir
+    local platform target bin_dir
     
     platform="${PLATFORM:-$(detect_platform)}"
     echo "Platform: $platform"
     
-    binary_name="$(get_binary_name "$platform")"
-    bin_dir="$SDK_DIR/src/toondb/_bin/$platform"
+    bin_dir="$SDK_DIR/src/sochdb/_bin/$platform"
     
     # Create bin directory
     mkdir -p "$bin_dir"
@@ -96,8 +112,7 @@ main() {
     fi
     
     echo "Target: $target"
-    echo "Binary: $binary_name"
-    echo "Output: $bin_dir/$binary_name"
+    echo "Output dir: $bin_dir"
     
     # Ensure Rust is available
     if ! command -v cargo &> /dev/null; then
@@ -107,31 +122,43 @@ main() {
     
     # Build the binary
     echo ""
-    echo "Building toondb-bulk..."
+    echo "Building SochDB binaries..."
+    if [[ -z "$WORKSPACE_ROOT" ]]; then
+        echo "Error: Could not locate Cargo workspace root." >&2
+        exit 1
+    fi
     cd "$WORKSPACE_ROOT"
     
     if [[ "$target" != "$(rustc -vV | grep host | cut -d' ' -f2)" ]]; then
         # Cross-compilation: need explicit target
-        cargo build --release -p toondb-tools --target "$target"
-        cp "target/$target/release/$binary_name" "$bin_dir/"
+        cargo build --release -p sochdb-tools --target "$target"
+        cargo build --release -p sochdb-grpc --target "$target"
+        for binary_name in $(get_binary_names "$platform"); do
+            cp "target/$target/release/$binary_name" "$bin_dir/" 2>/dev/null || true
+        done
     else
         # Native build
-        cargo build --release -p toondb-tools
-        cp "target/release/$binary_name" "$bin_dir/"
+        cargo build --release -p sochdb-tools
+        cargo build --release -p sochdb-grpc
+        for binary_name in $(get_binary_names "$platform"); do
+            cp "target/release/$binary_name" "$bin_dir/" 2>/dev/null || true
+        done
     fi
     
     # Make executable
-    chmod +x "$bin_dir/$binary_name" 2>/dev/null || true
+    chmod +x "$bin_dir"/* 2>/dev/null || true
     
     echo ""
-    echo "✓ Binary installed: $bin_dir/$binary_name"
+    echo "✓ Binaries installed in: $bin_dir"
     
     # Verify
-    if [[ -x "$bin_dir/$binary_name" || "$platform" == windows-* ]]; then
-        echo "✓ Binary is executable"
-        "$bin_dir/$binary_name" --version 2>/dev/null || true
-    else
-        echo "Warning: Binary may not be executable"
+    if [[ "$platform" != windows-* ]]; then
+        for binary_name in $(get_binary_names "$platform"); do
+            if [[ -x "$bin_dir/$binary_name" ]]; then
+                echo "✓ $binary_name is executable"
+                "$bin_dir/$binary_name" --version 2>/dev/null || true
+            fi
+        done
     fi
 }
 

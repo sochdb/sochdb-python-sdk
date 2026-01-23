@@ -87,6 +87,15 @@ def get_binary_name() -> str:
 def find_workspace_root() -> Path:
     """Find the SochDB workspace root."""
     current = Path(__file__).resolve().parent
+    
+    # First check for sibling 'sochdb' directory (typical SDK layout)
+    sibling_workspace = current.parent / "sochdb"
+    if sibling_workspace.exists() and (sibling_workspace / "Cargo.toml").exists():
+        with open(sibling_workspace / "Cargo.toml") as f:
+            if "[workspace]" in f.read():
+                return sibling_workspace
+    
+    # Otherwise search up the directory tree
     while current != current.parent:
         if (current / "Cargo.toml").exists():
             with open(current / "Cargo.toml") as f:

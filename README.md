@@ -857,6 +857,8 @@ db.copy_between_namespaces(
 
 Collections store documents with embeddings for semantic search using HNSW.
 
+**Strategy note:** HNSW is the default, correctness‑first navigator (training‑free, robust under updates). A learned navigator (CHN) is only supported behind a feature gate with strict acceptance checks (recall@k, worst‑case fallback to HNSW, and drift detection). This keeps production behavior stable while allowing controlled experimentation.
+
 ### Collection Configuration
 
 ```python
