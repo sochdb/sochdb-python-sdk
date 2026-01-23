@@ -32,7 +32,7 @@ Example (Server Mode):
     client.put_kv("key", b"value")
 """
 
-__version__ = "0.4.2"
+__version__ = "0.4.3"
 
 # Embedded mode (FFI)
 from .database import Database, Transaction
@@ -46,6 +46,24 @@ from .namespace import (
     SearchResults,
 )
 from .vector import VectorIndex
+
+# Queue API (v0.4.3)
+from .queue import (
+    PriorityQueue,
+    QueueConfig,
+    QueueKey,
+    Task,
+    TaskState,
+    QueueStats,
+    StreamingTopK,
+    create_queue,
+    # Backend interfaces for custom implementations
+    QueueBackend,
+    QueueTransaction,
+    FFIQueueBackend,
+    GrpcQueueBackend,
+    InMemoryQueueBackend,
+)
 
 # Server mode (gRPC/IPC)
 from .grpc_client import SochDBClient, SearchResult, Document, GraphNode, GraphEdge, TemporalEdge
@@ -97,6 +115,21 @@ __all__ = [
     "SearchRequest",
     "SearchResults",
     "VectorIndex",
+    
+    # Queue API (v0.4.3)
+    "PriorityQueue",
+    "QueueConfig",
+    "QueueKey",
+    "Task",
+    "TaskState",
+    "QueueStats",
+    "StreamingTopK",
+    "create_queue",
+    "QueueBackend",
+    "QueueTransaction",
+    "FFIQueueBackend",
+    "GrpcQueueBackend",
+    "InMemoryQueueBackend",
     
     # Server mode (thin clients)
     "SochDBClient",

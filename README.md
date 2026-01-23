@@ -83,26 +83,27 @@ LLM-Optimized Embedded Database with Native Vector Search
 14. [Temporal Graph (Time-Travel)](#14-temporal-graph-time-travel)
 15. [Semantic Cache](#15-semantic-cache)
 16. [Context Query Builder (LLM Optimization) and Session](#16-context-query-builder-llm-optimization)
-17. [Atomic Multi-Index Writes](#17-atomic-multi-index-writes)
-18. [Recovery & WAL Management](#18-recovery--wal-management)
-19. [Checkpoints & Snapshots](#19-checkpoints--snapshots)
-20. [Compression & Storage](#20-compression--storage)
-21. [Statistics & Monitoring](#21-statistics--monitoring)
-22. [Distributed Tracing](#22-distributed-tracing)
-23. [Workflow & Run Tracking](#23-workflow--run-tracking)
-24. [Server Mode (gRPC Client)](#24-server-mode-grpc-client)
-25. [IPC Client (Unix Sockets)](#25-ipc-client-unix-sockets)
-26. [Standalone VectorIndex](#26-standalone-vectorindex)
-27. [Vector Utilities](#27-vector-utilities)
-28. [Data Formats (TOON/JSON/Columnar)](#28-data-formats-toonjsoncolumnar)
-29. [Policy Service](#29-policy-service)
-30. [MCP (Model Context Protocol)](#30-mcp-model-context-protocol)
-31. [Configuration Reference](#31-configuration-reference)
-32. [Error Handling](#32-error-handling)
-33. [Async Support](#33-async-support)
-34. [Building & Development](#34-building--development)
-35. [Complete Examples](#35-complete-examples)
-36. [Migration Guide](#36-migration-guide)
+17. [Priority Queue & Task Management](#17-priority-queue--task-management)
+18. [Atomic Multi-Index Writes](#18-atomic-multi-index-writes)
+19. [Recovery & WAL Management](#19-recovery--wal-management)
+20. [Checkpoints & Snapshots](#20-checkpoints--snapshots)
+21. [Compression & Storage](#21-compression--storage)
+22. [Statistics & Monitoring](#22-statistics--monitoring)
+23. [Distributed Tracing](#23-distributed-tracing)
+24. [Workflow & Run Tracking](#24-workflow--run-tracking)
+25. [Server Mode (gRPC Client)](#25-server-mode-grpc-client)
+26. [IPC Client (Unix Sockets)](#26-ipc-client-unix-sockets)
+27. [Standalone VectorIndex](#27-standalone-vectorindex)
+28. [Vector Utilities](#28-vector-utilities)
+29. [Data Formats (TOON/JSON/Columnar)](#29-data-formats-toonjsoncolumnar)
+30. [Policy Service](#30-policy-service)
+31. [MCP (Model Context Protocol)](#31-mcp-model-context-protocol)
+32. [Configuration Reference](#32-configuration-reference)
+33. [Error Handling](#33-error-handling)
+34. [Async Support](#34-async-support)
+35. [Building & Development](#35-building--development)
+36. [Complete Examples](#36-complete-examples)
+37. [Migration Guide](#37-migration-guide)
 
 ---
 
@@ -1958,7 +1959,338 @@ except ContextError as e:
 ```
 ---
 
-## 17. Atomic Multi-Index Writes
+## 17. Priority Queue & Task Management
+
+SochDB provides a first-class priority queue implementation with atomic claim protocol for reliable distributed task processing. The queue supports both embedded (FFI) and server (gRPC) modes.
+
+### Features
+
+- **Priority-based ordering**: Tasks dequeued by priority, then ready time, then sequence
+- **Atomic claim protocol**: Linearizable claim semantics prevent double-delivery
+- **Visibility timeout**: Automatic retry for failed workers (at-least-once delivery)
+- **Delayed tasks**: Schedule tasks for future execution
+- **Batch operations**: Enqueue multiple tasks atomically
+- **Streaming Top-K**: O(N log K) selection for efficient ranking
+- **Dual-mode support**: Works with embedded Database or gRPC SochDBClient
+
+### Quick Start
+
+```python
+from sochdb import Database, PriorityQueue, create_queue
+
+# Create queue from database
+db = Database.open("./queue_db")
+queue = PriorityQueue.from_database(db, "my_queue")
+
+# Or use convenience function (auto-detects backend)
+queue = create_queue(db, "my_queue")
+
+# Enqueue tasks with priority
+task_id1 = queue.enqueue(priority=10, payload=b"high priority task")
+task_id2 = queue.enqueue(priority=1, payload=b"low priority task")
+
+# Dequeue tasks (highest priority first)
+task = queue.dequeue(worker_id="worker-1")
+if task:
+    print(f"Processing: {task.payload}")
+    # Process task...
+    queue.ack(task.task_id)  # Mark as completed
+```
+
+### Enqueue Operations
+
+```python
+# Simple enqueue with priority
+task_id = queue.enqueue(
+    priority=10,
+    payload=b"task data",
+)
+
+# Delayed task (execute after 60 seconds)
+task_id = queue.enqueue(
+    priority=5,
+    payload=b"delayed task",
+    delay_ms=60000,
+)
+
+# Batch enqueue (atomic)
+task_ids = queue.enqueue_batch([
+    (10, b"task 1"),
+    (20, b"task 2"),
+    (15, b"task 3"),
+])
+```
+
+### Dequeue and Processing
+
+```python
+# Dequeue with automatic visibility timeout
+task = queue.dequeue(worker_id="worker-1")
+
+if task:
+    try:
+        # Process the task
+        result = process_task(task.payload)
+        
+        # Mark as successfully completed
+        queue.ack(task.task_id)
+        
+    except Exception as e:
+        # Return to queue for retry (optionally change priority)
+        queue.nack(
+            task_id=task.task_id,
+            new_priority=task.priority - 1  # Lower priority on retry
+        )
+```
+
+### Peek and Stats
+
+```python
+# Peek at next task without claiming
+task = queue.peek()
+if task:
+    print(f"Next task: {task.payload}, priority: {task.priority}")
+
+# Get queue statistics
+stats = queue.stats()
+print(f"Pending: {stats['pending']}")
+print(f"Claimed: {stats['claimed']}")
+print(f"Total: {stats['total']}")
+
+# List all tasks (for monitoring)
+tasks = queue.list_tasks(limit=100)
+for task in tasks:
+    print(f"Task {task.task_id}: priority={task.priority}, status={task.status}")
+```
+
+### Configuration
+
+```python
+from sochdb import PriorityQueue, QueueConfig
+
+# Custom configuration
+config = QueueConfig(
+    queue_id="my_queue",
+    visibility_timeout_ms=30000,  # 30 seconds
+    max_retries=3,
+    dead_letter_queue="dlq_queue",
+)
+
+queue = PriorityQueue.from_database(db, config=config)
+```
+
+### Worker Pattern
+
+```python
+import time
+
+def worker_loop(worker_id: str):
+    """Simple worker loop."""
+    while True:
+        task = queue.dequeue(worker_id=worker_id)
+        
+        if task:
+            try:
+                # Process task
+                result = process_task(task.payload)
+                queue.ack(task.task_id)
+                print(f"✓ Completed task {task.task_id}")
+                
+            except Exception as e:
+                print(f"✗ Failed task {task.task_id}: {e}")
+                queue.nack(task.task_id)
+        else:
+            # No tasks available, wait
+            time.sleep(1)
+
+# Start multiple workers
+from concurrent.futures import ThreadPoolExecutor
+
+with ThreadPoolExecutor(max_workers=4) as executor:
+    for i in range(4):
+        executor.submit(worker_loop, f"worker-{i}")
+```
+
+### Streaming Top-K Selection
+
+The queue includes a `StreamingTopK` utility for efficient ranking with O(N log K) complexity:
+
+```python
+from sochdb.queue import StreamingTopK
+
+# Create top-K selector (k=10, ascending order)
+topk = StreamingTopK(k=10, ascending=True)
+
+# Process items one at a time
+for score, item in candidates:
+    topk.push(item, key=lambda x: score)
+
+# Get sorted top-K results
+results = topk.get_sorted()
+
+# With custom key function
+topk = StreamingTopK(
+    k=5, 
+    ascending=False,  # Descending (highest first)
+    key=lambda x: x['score']
+)
+
+for item in items:
+    topk.push(item)
+
+top_5 = topk.get_sorted()
+```
+
+### Server Mode (gRPC)
+
+```python
+from sochdb import SochDBClient, PriorityQueue
+
+# Connect to server
+client = SochDBClient("localhost:50051")
+
+# Create queue using gRPC backend
+queue = PriorityQueue.from_client(client, "distributed_queue")
+
+# All operations work the same way
+task_id = queue.enqueue(priority=10, payload=b"server task")
+task = queue.dequeue(worker_id="worker-1")
+if task:
+    queue.ack(task.task_id)
+```
+
+### Queue Backend Architecture
+
+```python
+from sochdb.queue import (
+    QueueBackend,
+    FFIQueueBackend,      # For embedded Database
+    GrpcQueueBackend,     # For SochDBClient
+    InMemoryQueueBackend, # For testing
+)
+
+# Use specific backend
+backend = FFIQueueBackend(db)
+queue = PriorityQueue.from_backend(backend, "my_queue")
+
+# Or use factory method (auto-detects)
+queue = create_queue(db, "my_queue")  # Returns FFIQueueBackend
+queue = create_queue(client, "my_queue")  # Returns GrpcQueueBackend
+```
+
+### Task Model
+
+```python
+# Task structure
+class Task:
+    task_id: str           # Unique task identifier
+    priority: int          # Task priority (higher = more important)
+    ready_ts: int          # When task becomes ready (epoch millis)
+    sequence: int          # Sequence number for ordering
+    payload: bytes         # Task data
+    claim_token: Optional[ClaimToken]  # Proof of ownership
+    retry_count: int       # Number of retries
+    status: str           # 'pending', 'claimed', 'completed'
+
+# Claim token (for ack/nack operations)
+class ClaimToken:
+    task_id: str
+    owner: str
+    instance: int
+    created_at: int
+    expires_at: int
+```
+
+### Best Practices
+
+**1. Choose appropriate visibility timeout:**
+```python
+# Short tasks (< 10s)
+config = QueueConfig(visibility_timeout_ms=15000)  # 15s
+
+# Long tasks (minutes)
+config = QueueConfig(visibility_timeout_ms=300000)  # 5 minutes
+```
+
+**2. Handle idempotency:**
+```python
+# Tasks may be redelivered, design for idempotency
+def process_task(payload):
+    task_id = extract_id(payload)
+    
+    # Check if already processed
+    if is_processed(task_id):
+        return  # Skip duplicate
+    
+    # Process and mark as done atomically
+    with db.transaction() as txn:
+        do_work(txn, payload)
+        mark_processed(txn, task_id)
+```
+
+**3. Use dead letter queue:**
+```python
+config = QueueConfig(
+    queue_id="main_queue",
+    max_retries=3,
+    dead_letter_queue="dlq_main",
+)
+
+# Monitor DLQ for failed tasks
+dlq = create_queue(db, "dlq_main")
+failed_tasks = dlq.list_tasks()
+```
+
+**4. Batch operations for efficiency:**
+```python
+# Instead of individual enqueues
+for item in items:
+    queue.enqueue(priority=1, payload=item)
+
+# Use batch enqueue
+tasks = [(1, item) for item in items]
+queue.enqueue_batch(tasks)
+```
+
+### Performance
+
+Based on benchmarks with `InMemoryQueueBackend`:
+
+- **QueueKey encode/decode**: ~411K ops/s
+- **Enqueue**: ~31-83K ops/s (depends on queue size)
+- **Dequeue + Ack**: ~1K ops/s (includes claim protocol)
+- **StreamingTopK (n=10K, k=10)**: ~212 ops/s
+
+### Integration with Existing Features
+
+```python
+# Combine with transactions
+with db.transaction() as txn:
+    # Update database
+    txn.put(b"status:job1", b"queued")
+    
+    # Enqueue task (outside transaction for reliability)
+    queue.enqueue(priority=10, payload=b"job1")
+
+# Combine with monitoring
+from sochdb import TraceStore
+
+trace = TraceStore(db)
+span = trace.start_span("process_queue_task")
+
+task = queue.dequeue("worker-1")
+if task:
+    try:
+        process_task(task.payload)
+        queue.ack(task.task_id)
+        span.add_event("task_completed")
+    finally:
+        span.finish()
+```
+
+---
+
+## 18. Atomic Multi-Index Writes
 
 Ensure consistency across KV storage, vectors, and graphs with atomic operations.
 
@@ -2031,7 +2363,7 @@ print(f"Status: {result.status}")  # "committed"
 
 ---
 
-## 18. Recovery & WAL Management
+## 19. Recovery & WAL Management
 
 SochDB uses Write-Ahead Logging (WAL) for durability with automatic recovery.
 
@@ -2110,7 +2442,7 @@ db = open_with_recovery("./my_database")
 
 ---
 
-## 19. Checkpoints & Snapshots
+## 20. Checkpoints & Snapshots
 
 ### Application Checkpoints
 
@@ -2184,7 +2516,7 @@ db.put(b"key1", b"new_value")  # Snapshot doesn't see this
 
 ---
 
-## 20. Compression & Storage
+## 21. Compression & Storage
 
 ### Compression Settings
 
@@ -2239,7 +2571,7 @@ print(f"Running compactions: {stats.running_compactions}")
 
 ---
 
-## 21. Statistics & Monitoring
+## 22. Statistics & Monitoring
 
 ### Database Statistics
 
@@ -2290,7 +2622,7 @@ print(f"Writes/sec: {metrics.writes_per_second}")
 
 ---
 
-## 22. Distributed Tracing
+## 23. Distributed Tracing
 
 Track operations for debugging and performance analysis.
 
@@ -2368,7 +2700,7 @@ traces.log_llm_call(
 
 ---
 
-## 23. Workflow & Run Tracking
+## 24. Workflow & Run Tracking
 
 Track long-running workflows with events and state.
 
@@ -2438,7 +2770,7 @@ workflow_svc.update_run_status("run_123", RunStatus.FAILED)
 
 ---
 
-## 24. Server Mode (gRPC Client)
+## 25. Server Mode (gRPC Client)
 
 Full-featured client for distributed deployments.
 
@@ -2566,7 +2898,7 @@ print(f"Tokens used: {context.token_count}")
 
 ---
 
-## 25. IPC Client (Unix Sockets)
+## 26. IPC Client (Unix Sockets)
 
 Local server communication via Unix sockets (lower latency than gRPC).
 
@@ -2607,7 +2939,7 @@ client.close()
 
 ---
 
-## 26. Standalone VectorIndex
+## 27. Standalone VectorIndex
 
 Direct HNSW index operations without collections.
 
@@ -2655,7 +2987,7 @@ index = VectorIndex.load("./index.bin")
 
 ---
 
-## 27. Vector Utilities
+## 28. Vector Utilities
 
 Standalone vector operations for preprocessing and analysis.
 
@@ -2693,7 +3025,7 @@ similarity = vector.cosine_similarity(a, b)
 
 ---
 
-## 28. Data Formats (TOON/JSON/Columnar)
+## 29. Data Formats (TOON/JSON/Columnar)
 
 ### Wire Formats
 
@@ -2751,7 +3083,7 @@ if FormatCapabilities.supports_round_trip(WireFormat.TOON):
 
 ---
 
-## 29. Policy Service
+## 30. Policy Service
 
 Register and evaluate access control policies.
 
@@ -2802,7 +3134,7 @@ policy_svc.delete("old_policy")
 
 ---
 
-## 30. MCP (Model Context Protocol)
+## 31. MCP (Model Context Protocol)
 
 Integrate SochDB as an MCP tool provider.
 
@@ -2856,7 +3188,7 @@ client.register_mcp_tool(
 
 ---
 
-## 31. Configuration Reference
+## 32. Configuration Reference
 
 ### Database Configuration
 
@@ -2917,7 +3249,7 @@ db = Database.open("./my_db", config={
 
 ---
 
-## 32. Error Handling
+## 33. Error Handling
 
 ### Error Types
 
@@ -3010,7 +3342,7 @@ except SochDBError as e:
 
 ---
 
-## 33. Async Support
+## 34. Async Support
 
 Optional async/await support for non-blocking operations.
 
@@ -3047,7 +3379,7 @@ asyncio.run(main())
 
 ---
 
-## 34. Building & Development
+## 35. Building & Development
 
 ### Building Native Extensions
 
@@ -3115,7 +3447,7 @@ sochdb/
 
 ---
 
-## 35. Complete Examples
+## 36. Complete Examples
 
 ### RAG Pipeline Example
 
@@ -3284,7 +3616,7 @@ db.close()
 
 ---
 
-## 36. Migration Guide
+## 37. Migration Guide
 
 ### From v0.2.x to v0.3.x
 
