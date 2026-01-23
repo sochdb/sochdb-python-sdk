@@ -1,0 +1,96 @@
+{
+  "timestamp": "2026-01-23T10:28:05.417398",
+  "config": {
+    "embedding_model": "text-embedding-3-small",
+    "dimension": 1536,
+    "n_documents": 1000,
+    "n_queries": 50
+  },
+  "embedding_stats": {
+    "api_calls": 2,
+    "cache_hits": 2100,
+    "cache_size": 1050
+  },
+  "results": [
+    {
+      "database": "SochDB",
+      "dimension": 1536,
+      "n_documents": 1000,
+      "insert_time_ms": 58.67583399999976,
+      "insert_rate": 17042.79141562784,
+      "search_p50_ms": 0.18912500000034527,
+      "search_p95_ms": 0.2679999999992688,
+      "search_p99_ms": 0.6289580000000683,
+      "search_qps": 5084.163755219192,
+      "batch_search": {
+        "1": {
+          "total_ms": 0.18049999999991684,
+          "per_query_ms": 0.18049999999991684,
+          "qps": 5540.166204988702
+        },
+        "10": {
+          "total_ms": 1.4779579999997239,
+          "per_query_ms": 0.1477957999999724,
+          "qps": 6766.092135231088
+        },
+        "50": {
+          "total_ms": 6.873917000000063,
+          "per_query_ms": 0.13747834000000125,
+          "qps": 7273.873106119778
+        }
+      },
+      "filtered_search_supported": false,
+      "filtered_search_note": "",
+      "memory_mb": 154.3125,
+      "status": "success"
+    },
+    {
+      "database": "ChromaDB",
+      "dimension": 1536,
+      "n_documents": 1000,
+      "status": "error",
+      "error": "\u001b[91mYou are using a deprecated configuration of Chroma.\n\n\u001b[94mIf you do not have data you wish to migrate, you only need to change how you construct\nyour Chroma client. Please see the \"New Clients\" section of https://docs.trychroma.com/deployment/migration.\n________________________________________________________________________________________________\n\nIf you do have data you wish to migrate, we have a migration tool you can use in order to\nmigrate your data to the new Chroma architecture.\nPlease `pip install chroma-migrate` and run `chroma-migrate` to migrate your data and then\nchange how you construct your Chroma client.\n\nSee https://docs.trychroma.com/deployment/migration for more information or join our discord at https://discord.gg/MMeYNTmh3x for help!\u001b[0m"
+    },
+    {
+      "database": "Qdrant",
+      "dimension": 1536,
+      "n_documents": 1000,
+      "insert_time_ms": 853.6975000000009,
+      "insert_rate": 1171.3751065219226,
+      "status": "error",
+      "error": "'QdrantClient' object has no attribute 'search'"
+    },
+    {
+      "database": "FAISS",
+      "dimension": 1536,
+      "n_documents": 1000,
+      "insert_time_ms": 19.18970800000075,
+      "insert_rate": 52111.267143823185,
+      "search_p50_ms": 0.05029200000095102,
+      "search_p95_ms": 0.06391700000030198,
+      "search_p99_ms": 0.13787500000006503,
+      "search_qps": 18835.93897153092,
+      "batch_search": {
+        "1": {
+          "total_ms": 0.054625000000640966,
+          "per_query_ms": 0.054625000000640966,
+          "qps": 18306.6361553916
+        },
+        "10": {
+          "total_ms": 0.4843329999992818,
+          "per_query_ms": 0.04843329999992818,
+          "qps": 20646.951580864465
+        },
+        "50": {
+          "total_ms": 2.504957999999391,
+          "per_query_ms": 0.05009915999998782,
+          "qps": 19960.41450595665
+        }
+      },
+      "filtered_search_supported": false,
+      "filtered_search_note": "",
+      "memory_mb": 253.765625,
+      "status": "success"
+    }
+  ]
+}

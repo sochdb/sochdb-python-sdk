@@ -1,0 +1,141 @@
+{
+  "timestamp": "2026-01-23T10:30:04.170446",
+  "config": {
+    "embedding_model": "text-embedding-3-small",
+    "dimension": 1536,
+    "test_sizes": [
+      100,
+      1000,
+      10000
+    ],
+    "n_queries": 100
+  },
+  "results": [
+    {
+      "database": "SochDB",
+      "n_vectors": 100,
+      "dimension": 1536,
+      "insert_time_ms": 4.425082999999885,
+      "insert_rate": 22598.446176038415,
+      "search_p50_ms": 0.059167000000082126,
+      "search_p95_ms": 0.06795799999981256,
+      "search_p99_ms": 0.168665999999984,
+      "search_qps": 16309.552700731098,
+      "recall_at_k": null,
+      "memory_mb": null,
+      "notes": ""
+    },
+    {
+      "database": "LanceDB",
+      "n_vectors": 100,
+      "dimension": 1536,
+      "insert_time_ms": 11.495457999999736,
+      "insert_rate": 8699.087935426522,
+      "search_p50_ms": 5.834291999999408,
+      "search_p95_ms": 6.270707999999736,
+      "search_p99_ms": 15.23308399999923,
+      "search_qps": 167.87505227734113,
+      "recall_at_k": null,
+      "memory_mb": null,
+      "notes": ""
+    },
+    {
+      "database": "FAISS",
+      "n_vectors": 100,
+      "dimension": 1536,
+      "insert_time_ms": 6.4550419999998,
+      "insert_rate": 15491.765971468985,
+      "search_p50_ms": 0.0287910000000835,
+      "search_p95_ms": 0.03187499999945942,
+      "search_p99_ms": 0.32933300000070886,
+      "search_qps": 31108.282331333234,
+      "recall_at_k": null,
+      "memory_mb": null,
+      "notes": ""
+    },
+    {
+      "database": "SochDB",
+      "n_vectors": 1000,
+      "dimension": 1536,
+      "insert_time_ms": 58.600166999999814,
+      "insert_rate": 17064.797784620703,
+      "search_p50_ms": 0.07791700000048252,
+      "search_p95_ms": 0.110040999999228,
+      "search_p99_ms": 0.19212499999987642,
+      "search_qps": 12094.149080484322,
+      "recall_at_k": null,
+      "memory_mb": null,
+      "notes": ""
+    },
+    {
+      "database": "LanceDB",
+      "n_vectors": 1000,
+      "dimension": 1536,
+      "insert_time_ms": 42.4589589999993,
+      "insert_rate": 23552.15538845445,
+      "search_p50_ms": 6.608124999999632,
+      "search_p95_ms": 7.051208000000031,
+      "search_p99_ms": 8.041625000000607,
+      "search_qps": 149.95792750394492,
+      "recall_at_k": null,
+      "memory_mb": null,
+      "notes": ""
+    },
+    {
+      "database": "FAISS",
+      "n_vectors": 1000,
+      "dimension": 1536,
+      "insert_time_ms": 15.313291000000007,
+      "insert_rate": 65302.749095540574,
+      "search_p50_ms": 0.04945799999944711,
+      "search_p95_ms": 0.061917000000022426,
+      "search_p99_ms": 0.0789589999996565,
+      "search_qps": 19753.410278121868,
+      "recall_at_k": null,
+      "memory_mb": null,
+      "notes": ""
+    },
+    {
+      "database": "SochDB",
+      "n_vectors": 10000,
+      "dimension": 1536,
+      "insert_time_ms": 710.5952499999972,
+      "insert_rate": 14072.708760718622,
+      "search_p50_ms": 0.17445900000723213,
+      "search_p95_ms": 0.230333999994059,
+      "search_p99_ms": 0.27979200000061155,
+      "search_qps": 5589.8702160549765,
+      "recall_at_k": null,
+      "memory_mb": null,
+      "notes": ""
+    },
+    {
+      "database": "LanceDB",
+      "n_vectors": 10000,
+      "dimension": 1536,
+      "insert_time_ms": 471.4319579999966,
+      "insert_rate": 21211.968833050712,
+      "search_p50_ms": 11.561083999993116,
+      "search_p95_ms": 11.90204099999903,
+      "search_p99_ms": 17.021958000000836,
+      "search_qps": 85.75038964183328,
+      "recall_at_k": null,
+      "memory_mb": null,
+      "notes": ""
+    },
+    {
+      "database": "FAISS",
+      "n_vectors": 10000,
+      "dimension": 1536,
+      "insert_time_ms": 243.22812500000168,
+      "insert_rate": 41113.66643968468,
+      "search_p50_ms": 0.10487500000522232,
+      "search_p95_ms": 0.13204100000052676,
+      "search_p99_ms": 0.18179100000281778,
+      "search_qps": 9384.387026347129,
+      "recall_at_k": null,
+      "memory_mb": null,
+      "notes": ""
+    }
+  ]
+}

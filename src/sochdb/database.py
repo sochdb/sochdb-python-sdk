@@ -177,6 +177,18 @@ class C_SearchResult(ctypes.Structure):
     ]
 
 
+class C_TemporalEdge(ctypes.Structure):
+    """Temporal edge structure for add_temporal_edge."""
+    _fields_ = [
+        ("from_id", ctypes.c_char_p),
+        ("edge_type", ctypes.c_char_p),
+        ("to_id", ctypes.c_char_p),
+        ("valid_from", ctypes.c_uint64),
+        ("valid_until", ctypes.c_uint64),
+        ("properties_json", ctypes.c_char_p),
+    ]
+
+
 class _FFI:
     """FFI bindings to the native library."""
     
@@ -356,6 +368,14 @@ class _FFI:
 
         # Temporal Graph API
         try:
+             # sochdb_add_temporal_edge(ptr, ns, edge) -> c_int
+             lib.sochdb_add_temporal_edge.argtypes = [
+                 ctypes.c_void_p,      # ptr
+                 ctypes.c_char_p,      # namespace
+                 C_TemporalEdge,       # edge
+             ]
+             lib.sochdb_add_temporal_edge.restype = ctypes.c_int
+             
              # sochdb_query_temporal_graph(ptr, ns, node, mode, ts, start, end, type, out_len)
              lib.sochdb_query_temporal_graph.argtypes = [
                  ctypes.c_void_p,
@@ -1931,12 +1951,11 @@ class Database:
         
         import json
         
-        # Use the C_TemporalEdge structure from FFI
-        # (defined in _FFI class)
         # Convert properties to JSON
         props_json = None if properties is None else json.dumps(properties).encode("utf-8")
         
-        edge = _FFI.lib.sochdb_add_temporal_edge.argtypes[2](  # Get C_TemporalEdge class
+        # Create C_TemporalEdge structure
+        edge = C_TemporalEdge(
             from_id=from_id.encode("utf-8"),
             edge_type=edge_type.encode("utf-8"),
             to_id=to_id.encode("utf-8"),
@@ -1945,8 +1964,8 @@ class Database:
             properties_json=props_json,
         )
         
-        result = _FFI.lib.sochdb_add_temporal_edge(
-            self._ptr,
+        result = _FFI.get_lib().sochdb_add_temporal_edge(
+            self._handle,
             namespace.encode("utf-8"),
             edge
         )
