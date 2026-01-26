@@ -70,14 +70,58 @@ pip install -e .
 
 ---
 
-## Concurrent Embedded Mode
+# SochDB Python SDK Documentation
 
-For web applications that need multiple processes to access the same database:
+LLM-Optimized Embedded Database with Native Vector Search
 
-```python
-from sochdb import Database
+---
 
-# Open in concurrent mode - multiple processes can access simultaneously
+## Table of Contents
+
+1. [Quick Start](#1-quick-start)
+2. [Installation](#2-installation)
+3. [Architecture Overview](#3-architecture-overview)
+4. [Core Key-Value Operations](#4-core-key-value-operations)
+5. [Transactions (ACID with SSI)](#5-transactions-acid-with-ssi)
+6. [Query Builder](#6-query-builder)
+7. [Prefix Scanning](#7-prefix-scanning)
+8. [SQL Operations](#8-sql-operations)
+9. [Table Management & Index Policies](#9-table-management--index-policies)
+10. [Namespaces & Multi-Tenancy](#10-namespaces--multi-tenancy)
+11. [Collections & Vector Search](#11-collections--vector-search)
+12. [Hybrid Search (Vector + BM25)](#12-hybrid-search-vector--bm25)
+13. [Graph Operations](#13-graph-operations)
+14. [Temporal Graph (Time-Travel)](#14-temporal-graph-time-travel)
+15. [Semantic Cache](#15-semantic-cache)
+16. [Context Query Builder (LLM Optimization)](#16-context-query-builder-llm-optimization)
+17. [Memory System](#17-memory-system)
+18. [Session Management](#18-session-management)
+19. [Atomic Multi-Index Writes](#19-atomic-multi-index-writes)
+20. [Recovery & WAL Management](#20-recovery--wal-management)
+21. [Checkpoints & Snapshots](#21-checkpoints--snapshots)
+22. [Compression & Storage](#22-compression--storage)
+23. [Statistics & Monitoring](#23-statistics--monitoring)
+24. [Distributed Tracing](#24-distributed-tracing)
+25. [Workflow & Run Tracking](#25-workflow--run-tracking)
+26. [Server Mode (gRPC Client)](#26-server-mode-grpc-client)
+27. [IPC Client (Unix Sockets)](#27-ipc-client-unix-sockets)
+28. [Standalone VectorIndex](#28-standalone-vectorindex)
+29. [Vector Utilities](#29-vector-utilities)
+30. [Data Formats (TOON/JSON/Columnar)](#30-data-formats-toonjsoncolumnar)
+31. [Policy Service](#31-policy-service)
+32. [MCP (Model Context Protocol)](#32-mcp-model-context-protocol)
+33. [Configuration Reference](#33-configuration-reference)
+34. [Error Handling](#34-error-handling)
+35. [Async Support](#35-async-support)
+36. [Building & Development](#36-building--development)
+37. [Complete Examples](#37-complete-examples)
+38. [Migration Guide](#38-migration-guide)
+
+---
+
+## 1. Quick Start
+
+### Concurrent Embedded Mode
 db = Database.open_concurrent("./app_data")
 
 # Reads are lock-free and can run in parallel (~100ns)
