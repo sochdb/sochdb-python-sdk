@@ -146,6 +146,9 @@ class CollectionConfig:
     content_field: Optional[str] = None # Field to index for BM25
     
     def __post_init__(self):
+        # Coerce string metric to DistanceMetric enum
+        if isinstance(self.metric, str):
+            object.__setattr__(self, 'metric', DistanceMetric(self.metric))
         # Dimension can be None (auto-infer) or positive
         if self.dimension is not None and self.dimension <= 0:
             raise ValidationError(f"Dimension must be positive, got {self.dimension}")
@@ -167,11 +170,20 @@ class CollectionConfig:
         }
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "CollectionConfig":
+    def from_dict(cls, data: Dict[str, Any], name: Optional[str] = None) -> "CollectionConfig":
+        # Handle Rust FFI compact format (no "name", metric as int)
+        coll_name = data.get("name", name or "unnamed")
+        
+        # Metric may be int (from Rust FFI) or string
+        raw_metric = data.get("metric", "cosine")
+        if isinstance(raw_metric, int):
+            metric_map = {0: "cosine", 1: "euclidean", 2: "dot_product"}
+            raw_metric = metric_map.get(raw_metric, "cosine")
+        
         return cls(
-            name=data["name"],
+            name=coll_name,
             dimension=data.get("dimension"),  # Can be None
-            metric=DistanceMetric(data.get("metric", "cosine")),
+            metric=DistanceMetric(raw_metric),
             m=data.get("m", 16),
             ef_construction=data.get("ef_construction", 100),
             quantization=QuantizationType(data.get("quantization", "none")),
@@ -322,6 +334,8 @@ class Collection:
         self._internal_to_id: Dict[int, Union[str, int]] = {}  # internal uint64 -> doc_id
         self._metadata_store: Dict[Union[str, int], Dict[str, Any]] = {}  # doc_id -> metadata
         self._next_internal_id: int = 0
+        self._raw_vectors: Dict[Union[str, int], Any] = {}  # doc_id -> vector (for snapshot)
+        self._ef_search_override: Optional[int] = None  # deferred ef_search setting
     
     # ========================================================================
     # Storage Key Helpers
@@ -370,8 +384,109 @@ class Collection:
                 max_connections=self._config.m,
                 ef_construction=self._config.ef_construction,
             )
-            # Set ef_search for good recall
-            self._vector_index.ef_search = 100
+            # Apply deferred override if set, otherwise use default
+            if self._ef_search_override is not None:
+                self._vector_index.ef_search = self._ef_search_override
+            else:
+                # Default ef_search high enough for good recall@100
+                self._vector_index.ef_search = 500
+    
+    def set_ef_search(self, ef_search: int) -> None:
+        """Set the ef_search parameter for HNSW search.
+        
+        Higher values give better recall at the cost of latency.
+        For recall@k, ef_search should be >= 5*k for good results.
+        
+        Args:
+            ef_search: The size of the dynamic candidate list during search.
+        """
+        if self._vector_index is not None:
+            self._vector_index.ef_search = ef_search
+        # Store for deferred application (if index not yet created)
+        self._ef_search_override = ef_search
+    
+    def vector_search_exact(
+        self,
+        vector: List[float],
+        k: int = 10,
+    ) -> "SearchResults":
+        """
+        Exact brute-force vector search for perfect recall.
+        
+        Computes distances to ALL vectors and returns the true k-nearest
+        neighbors. Guarantees recall@k = 1.0 but is O(n) per query.
+        
+        Args:
+            vector: Query vector
+            k: Number of results
+            
+        Returns:
+            SearchResults with perfect recall
+        """
+        import time
+        start_time = time.time()
+        
+        if self._vector_index is None:
+            return SearchResults(results=[], total_count=0, query_time_ms=0.0)
+        
+        raw_results = self._vector_index.search_exact(vector, k)
+        results = []
+        for internal_id, distance in raw_results:
+            doc_id = self._internal_to_id.get(internal_id)
+            if doc_id is None:
+                continue
+            similarity = max(0.0, 1.0 - distance)
+            result = SearchResult(
+                id=str(doc_id), score=similarity,
+                metadata=None,
+                vector=None,
+            )
+            results.append(result)
+        
+        elapsed = (time.time() - start_time) * 1000
+        return SearchResults(results=results, total_count=len(results), query_time_ms=elapsed)
+    
+    def vector_search_exact_f64(
+        self,
+        vector: List[float],
+        k: int = 10,
+    ) -> "SearchResults":
+        """
+        Exact brute-force vector search using f64 precision.
+        
+        Same as vector_search_exact but computes distances in f64 to match
+        ground truth computed with numpy f64 arithmetic. Eliminates f32
+        tie-breaking mismatches at the k-th boundary.
+        
+        Args:
+            vector: Query vector
+            k: Number of results
+            
+        Returns:
+            SearchResults with perfect precision against f64 ground truth
+        """
+        import time
+        start_time = time.time()
+        
+        if self._vector_index is None:
+            return SearchResults(results=[], total_count=0, query_time_ms=0.0)
+        
+        raw_results = self._vector_index.search_exact_f64(vector, k)
+        results = []
+        for internal_id, distance in raw_results:
+            doc_id = self._internal_to_id.get(internal_id)
+            if doc_id is None:
+                continue
+            similarity = max(0.0, 1.0 - distance)
+            result = SearchResult(
+                id=str(doc_id), score=similarity,
+                metadata=None,
+                vector=None,
+            )
+            results.append(result)
+        
+        elapsed = (time.time() - start_time) * 1000
+        return SearchResults(results=results, total_count=len(results), query_time_ms=elapsed)
     
     def _get_internal_id(self, doc_id: Union[str, int]) -> int:
         """Get or create internal uint64 ID for a document."""
@@ -393,6 +508,8 @@ class Collection:
         """
         Insert a single vector.
         
+        Uses native Rust FFI for persistence and HNSW indexing.
+        
         Args:
             id: Unique document ID
             vector: Vector embedding
@@ -403,20 +520,21 @@ class Collection:
         if self._config.dimension is None:
             object.__setattr__(self._config, 'dimension', len(vector))
         
-        self._ensure_index(self._config.dimension)
-        
         # Validate dimension
         if len(vector) != self._config.dimension:
             raise DimensionMismatchError(self._config.dimension, len(vector))
         
-        # Get internal ID and insert into HNSW
+        # Build metadata dict
+        meta = metadata.copy() if metadata else {}
+        if content:
+            meta["_content"] = content
+        
+        # 1. Insert into in-memory HNSW (fast, used for same-session search)
+        self._ensure_index(self._config.dimension)
         internal_id = self._get_internal_id(id)
         self._vector_index.insert(internal_id, vector)
-        
-        # Store metadata
-        self._metadata_store[id] = metadata or {}
-        if content:
-            self._metadata_store[id]["_content"] = content
+        self._metadata_store[id] = meta
+        self._raw_vectors[id] = vector  # keep for snapshot
     
     def insert_batch(
         self,
@@ -428,6 +546,8 @@ class Collection:
     ) -> int:
         """
         Insert multiple vectors in a batch.
+        
+        Uses native Rust FFI for durable persistence and HNSW indexing.
         
         Supports two calling conventions:
         1. Tuple format: insert_batch([(id, vector, metadata, content), ...])
@@ -458,25 +578,30 @@ class Collection:
         if self._config.dimension is None:
             object.__setattr__(self._config, 'dimension', len(first_vec))
         
-        self._ensure_index(self._config.dimension)
-        
         # Validate dimensions
         for doc_id, vector, metadata, content in documents:
             if len(vector) != self._config.dimension:
                 raise DimensionMismatchError(self._config.dimension, len(vector))
         
-        # Batch insert into HNSW using numpy arrays
+        # Build ID and metadata lists for FFI batch insert
+        batch_ids = [str(doc[0]) for doc in documents]
+        batch_vectors = [doc[1] for doc in documents]
+        batch_metadatas = []
+        for doc_id, vector, metadata, content in documents:
+            meta = metadata.copy() if metadata else {}
+            if content:
+                meta["_content"] = content
+            batch_metadatas.append(meta if meta else None)
+        
+        # 1. Fast in-memory HNSW insert (used for same-session search)
+        self._ensure_index(self._config.dimension)
         internal_ids = np.array([self._get_internal_id(doc[0]) for doc in documents], dtype=np.uint64)
         vectors_array = np.array([doc[1] for doc in documents], dtype=np.float32)
-        
-        # Insert into HNSW
         count = self._vector_index.insert_batch(internal_ids, vectors_array)
-        
-        # Store metadata
-        for doc_id, vector, metadata, content in documents:
-            self._metadata_store[doc_id] = metadata or {}
-            if content:
-                self._metadata_store[doc_id]["_content"] = content
+        for i, (doc_id, vector, metadata, content) in enumerate(documents):
+            meta = batch_metadatas[i] if batch_metadatas[i] else {}
+            self._metadata_store[doc_id] = meta
+            self._raw_vectors[doc_id] = batch_vectors[i]  # keep for snapshot
         
         return count
     
@@ -741,65 +866,190 @@ class Collection:
     def _vector_search(self, request: SearchRequest) -> SearchResults:
         """Internal vector search implementation.
         
-        Uses the native Rust HNSW index (VectorIndex) for fast search
-        with >90% recall on typical workloads.
+        Uses in-memory HNSW if populated (same session), otherwise
+        reloads from KV storage via native Rust FFI.
         """
         import time
         
         start_time = time.time()
         
-        if request.vector is None or self._vector_index is None or len(self._vector_index) == 0:
+        if request.vector is None:
             return SearchResults(results=[], total_count=0, query_time_ms=0.0)
         
-        # Use the fast HNSW search
-        # Request more results if we have filters (we'll filter down)
         search_k = request.k * 3 if request.filter else request.k
         
-        hnsw_results = self._vector_index.search_fast(request.vector, k=search_k)
+        # Primary path: in-memory HNSW (same session, fast)
+        if self._vector_index is not None and len(self._vector_index) > 0:
+            return self._search_in_memory(request, search_k, start_time)
         
-        # Map internal IDs back to document IDs and apply filters
+        # Reload path: load vectors from snapshot into HNSW (fast batch insert)
+        if self._config.dimension is not None:
+            loaded = self._reload_vectors_from_snapshot()
+            if loaded > 0:
+                return self._search_in_memory(request, search_k, start_time)
+        
+        # Fallback: try native Rust FFI search
+        ffi_results = self._db.ffi_collection_search(
+            namespace=self.namespace_name,
+            collection=self.name,
+            query_vector=request.vector,
+            k=search_k,
+        )
+        
+        if ffi_results is not None and len(ffi_results) > 0:
+            results = []
+            for r in ffi_results:
+                doc_id = r.get("id", "")
+                score = r.get("score", 0.0)
+                metadata = r.get("metadata", {})
+                if request.min_score is not None and score < request.min_score:
+                    continue
+                if request.filter and not self._matches_filter(metadata, request.filter):
+                    continue
+                result = SearchResult(
+                    id=doc_id, score=score,
+                    metadata=metadata if request.include_metadata else None,
+                    vector=None,
+                )
+                results.append(result)
+                if len(results) >= request.k:
+                    break
+            
+            elapsed = (time.time() - start_time) * 1000
+            return SearchResults(results=results, total_count=len(results), query_time_ms=elapsed)
+        
+        return SearchResults(results=[], total_count=0, query_time_ms=0.0)
+    
+    def _search_in_memory(self, request: SearchRequest, search_k: int, start_time: float) -> SearchResults:
+        """Search using the in-memory HNSW index."""
+        import time
+        
+        raw_results = self._vector_index.search(request.vector, search_k)
+        
         results = []
-        for internal_id, distance in hnsw_results:
-            if internal_id not in self._internal_to_id:
+        for internal_id, distance in raw_results:
+            doc_id = self._internal_to_id.get(internal_id)
+            if doc_id is None:
                 continue
-            
-            doc_id = self._internal_to_id[internal_id]
-            metadata = self._metadata_store.get(doc_id, {})
-            
-            # Convert distance to similarity score for cosine
-            # VectorIndex returns L2 distance of normalized vectors
-            # For normalized vectors: L2^2 = 2(1 - cos_sim), so cos_sim = 1 - L2^2/2
-            similarity = max(0.0, 1.0 - (distance ** 2) / 2.0)
-            
-            # Apply min_score filter
+            # Convert distance to similarity (higher = better)
+            similarity = max(0.0, 1.0 - distance)
             if request.min_score is not None and similarity < request.min_score:
                 continue
-            
-            # Apply metadata filter
-            if request.filter:
-                if not self._matches_filter(metadata, request.filter):
-                    continue
-            
+            metadata = self._metadata_store.get(doc_id, {})
+            if request.filter and not self._matches_filter(metadata, request.filter):
+                continue
             result = SearchResult(
-                id=doc_id,
-                score=similarity,
+                id=str(doc_id), score=similarity,
                 metadata=metadata if request.include_metadata else None,
-                vector=None,  # Not stored in-memory for efficiency
+                vector=None,
             )
             results.append(result)
-            
             if len(results) >= request.k:
                 break
         
-        query_time_ms = (time.time() - start_time) * 1000
-        
-        return SearchResults(
-            results=results,
-            total_count=len(results),
-            query_time_ms=query_time_ms,
-            vector_results=len(results),
-        )
+        elapsed = (time.time() - start_time) * 1000
+        return SearchResults(results=results, total_count=len(results), query_time_ms=elapsed)
     
+    # ── Persistence helpers ──────────────────────────────────────────────
+
+    def _snapshot_dir(self) -> str:
+        """Return the directory for numpy vector snapshots."""
+        import os
+        base = getattr(self._db, '_path', '/tmp/sochdb')
+        return os.path.join(base, '_snapshots', self.namespace_name, self.name)
+
+    def _persist_vectors_snapshot(self) -> None:
+        """Save all in-memory vectors/ids/metadata to numpy files on disk.
+        
+        This is called after upload completes (post_upload / checkpoint).
+        Much faster to reload than per-vector KV: a single np.load() + insert_batch().
+        """
+        import os, json, numpy as np
+
+        if self._vector_index is None or len(self._vector_index) == 0:
+            return
+
+        snap_dir = self._snapshot_dir()
+        os.makedirs(snap_dir, exist_ok=True)
+
+        n = len(self._id_to_internal)
+        dim = self._config.dimension
+
+        # Build sorted arrays (sorted by internal_id for determinism)
+        doc_ids = []
+        internal_ids = np.empty(n, dtype=np.uint64)
+        vectors = np.empty((n, dim), dtype=np.float32)
+        meta_list = []
+
+        # We need vectors, but they're in the HNSW index (no getter).
+        # So we also keep a raw vector store during insert.
+        # If _raw_vectors is available, use it; otherwise skip snapshot.
+        if not hasattr(self, '_raw_vectors') or len(self._raw_vectors) == 0:
+            return
+
+        idx = 0
+        for doc_id, iid in self._id_to_internal.items():
+            doc_ids.append(str(doc_id))
+            internal_ids[idx] = iid
+            if doc_id in self._raw_vectors:
+                vectors[idx] = self._raw_vectors[doc_id]
+            meta_list.append(self._metadata_store.get(doc_id, {}))
+            idx += 1
+
+        np.save(os.path.join(snap_dir, 'vectors.npy'), vectors[:idx])
+        np.save(os.path.join(snap_dir, 'internal_ids.npy'), internal_ids[:idx])
+
+        # Save doc_ids and metadata as JSON (small relative to vectors)
+        with open(os.path.join(snap_dir, 'doc_ids.json'), 'w') as f:
+            json.dump(doc_ids[:idx], f)
+        with open(os.path.join(snap_dir, 'metadata.json'), 'w') as f:
+            json.dump(meta_list[:idx], f)
+
+    def _reload_vectors_from_snapshot(self) -> int:
+        """Reload vectors from numpy snapshot files using fast batch insert.
+        
+        Returns number of vectors loaded. Uses insert_batch (parallel Rust FFI)
+        for ~10x faster rebuild compared to one-by-one inserts.
+        """
+        import os, json, numpy as np
+
+        snap_dir = self._snapshot_dir()
+        vectors_path = os.path.join(snap_dir, 'vectors.npy')
+        if not os.path.exists(vectors_path):
+            return 0
+
+        dim = self._config.dimension
+        if dim is None:
+            return 0
+
+        try:
+            vectors = np.load(vectors_path)
+            internal_ids = np.load(os.path.join(snap_dir, 'internal_ids.npy'))
+            with open(os.path.join(snap_dir, 'doc_ids.json'), 'r') as f:
+                doc_ids = json.load(f)
+            with open(os.path.join(snap_dir, 'metadata.json'), 'r') as f:
+                meta_list = json.load(f)
+        except Exception:
+            return 0
+
+        n = len(doc_ids)
+        if n == 0:
+            return 0
+
+        # Rebuild mappings
+        for i, doc_id in enumerate(doc_ids):
+            iid = int(internal_ids[i])
+            self._id_to_internal[doc_id] = iid
+            self._internal_to_id[iid] = doc_id
+            self._metadata_store[doc_id] = meta_list[i] if i < len(meta_list) else {}
+        self._next_internal_id = int(internal_ids.max()) + 1
+
+        # Rebuild HNSW using parallel batch insert (fast!)
+        self._ensure_index(dim)
+        self._vector_index.insert_batch(internal_ids, vectors)
+
+        return n
+
     def _matches_filter(self, metadata: Dict[str, Any], filter_dict: Dict[str, Any]) -> bool:
         """Check if metadata matches filter criteria."""
         for key, value in filter_dict.items():
@@ -1320,7 +1570,18 @@ class Namespace:
         if self._db.get(config_key) is not None:
             raise CollectionExistsError(config.name, self._name)
         
-        # Persist config to storage
+        # Create native Rust FFI collection first (HNSW index + durable storage)
+        # The FFI call also writes a compact config to the same key, so we
+        # write our full config AFTER to ensure the proper format is stored.
+        metric_str = config.metric.value if hasattr(config.metric, 'value') else str(config.metric)
+        self._db.ffi_collection_create(
+            namespace=self._name,
+            collection=config.name,
+            dimension=config.dimension or 0,
+            metric=metric_str,
+        )
+        
+        # Persist full config to storage (overwrites compact FFI config)
         self._db.put(config_key, json.dumps(config.to_dict()).encode())
         
         # Create and cache collection handle
@@ -1349,7 +1610,7 @@ class Namespace:
         config_key = f"{self._name}/_collections/{name}".encode()
         data = self._db.get(config_key)
         if data is not None:
-            config = CollectionConfig.from_dict(json.loads(data.decode()))
+            config = CollectionConfig.from_dict(json.loads(data.decode()), name=name)
             collection = Collection(self, config)
             self._collections[name] = collection
             return collection

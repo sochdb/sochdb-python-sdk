@@ -419,9 +419,44 @@ class _FFI:
         except (AttributeError, OSError):
              pass
         
-        # Collection Search API (Native Rust vector search)
+        # Collection API (Native Rust vector operations)
         # Optional: Only available in newer native library versions
         try:
+            # sochdb_collection_create(ptr, namespace, collection, dimension, dist_type) -> c_int
+            lib.sochdb_collection_create.argtypes = [
+                ctypes.c_void_p,   # ptr
+                ctypes.c_char_p,   # namespace
+                ctypes.c_char_p,   # collection
+                ctypes.c_size_t,   # dimension
+                ctypes.c_uint8,    # dist_type: 0=Cosine, 1=Euclidean, 2=Dot
+            ]
+            lib.sochdb_collection_create.restype = ctypes.c_int
+
+            # sochdb_collection_insert(ptr, namespace, collection, id, vector_ptr, vector_len, metadata_json) -> c_int
+            lib.sochdb_collection_insert.argtypes = [
+                ctypes.c_void_p,   # ptr
+                ctypes.c_char_p,   # namespace
+                ctypes.c_char_p,   # collection
+                ctypes.c_char_p,   # id
+                ctypes.POINTER(ctypes.c_float),  # vector_ptr
+                ctypes.c_size_t,   # vector_len
+                ctypes.c_char_p,   # metadata_json (nullable)
+            ]
+            lib.sochdb_collection_insert.restype = ctypes.c_int
+
+            # sochdb_collection_insert_batch(ptr, ns, col, ids[], vectors_flat, dim, metas[], count) -> c_int
+            lib.sochdb_collection_insert_batch.argtypes = [
+                ctypes.c_void_p,                   # ptr
+                ctypes.c_char_p,                   # namespace
+                ctypes.c_char_p,                   # collection
+                ctypes.POINTER(ctypes.c_char_p),   # ids array
+                ctypes.POINTER(ctypes.c_float),    # flat vectors array
+                ctypes.c_size_t,                   # dimension
+                ctypes.POINTER(ctypes.c_char_p),   # metadata_jsons array (nullable entries)
+                ctypes.c_size_t,                   # count
+            ]
+            lib.sochdb_collection_insert_batch.restype = ctypes.c_int
+
             lib.sochdb_collection_search.argtypes = [
                 ctypes.c_void_p,   # ptr
                 ctypes.c_char_p,   # namespace
@@ -2385,6 +2420,171 @@ class Database:
         except (AttributeError, OSError) as e:
             # FFI not available, return empty (caller should fallback)
             return None
+
+    def ffi_collection_create(
+        self,
+        namespace: str,
+        collection: str,
+        dimension: int,
+        metric: str = "cosine",
+    ) -> bool:
+        """
+        Create a collection via native Rust FFI.
+        
+        Args:
+            namespace: Namespace name
+            collection: Collection name
+            dimension: Vector dimension
+            metric: Distance metric ("cosine", "euclidean", "dot_product")
+            
+        Returns:
+            True on success
+        """
+        self._check_open()
+        dist_map = {"cosine": 0, "euclidean": 1, "dot_product": 2, "dot": 2}
+        dist_type = dist_map.get(metric, 0)
+        try:
+            result = self._lib.sochdb_collection_create(
+                self._handle,
+                namespace.encode("utf-8"),
+                collection.encode("utf-8"),
+                dimension,
+                dist_type,
+            )
+            return result == 0
+        except (AttributeError, OSError):
+            return False
+
+    def ffi_collection_insert(
+        self,
+        namespace: str,
+        collection: str,
+        doc_id: str,
+        vector: "List[float]",
+        metadata: "Optional[Dict]" = None,
+    ) -> bool:
+        """
+        Insert a vector into a collection via native Rust FFI.
+        
+        This persists the vector to disk AND inserts into the in-process HNSW index.
+        
+        Args:
+            namespace: Namespace name
+            collection: Collection name
+            doc_id: Document ID string
+            vector: Vector embedding
+            metadata: Optional metadata dict
+            
+        Returns:
+            True on success
+        """
+        self._check_open()
+        import numpy as np
+        import json as _json
+        
+        vec_array = np.array(vector, dtype=np.float32)
+        vec_ptr = vec_array.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+        
+        meta_json = None
+        if metadata:
+            meta_json = _json.dumps(metadata).encode("utf-8")
+        
+        try:
+            result = self._lib.sochdb_collection_insert(
+                self._handle,
+                namespace.encode("utf-8"),
+                collection.encode("utf-8"),
+                doc_id.encode("utf-8"),
+                vec_ptr,
+                len(vector),
+                meta_json,
+            )
+            return result == 0
+        except (AttributeError, OSError):
+            return False
+
+    def ffi_collection_insert_batch(
+        self,
+        namespace: str,
+        collection: str,
+        ids: "List[str]",
+        vectors: "List[List[float]]",
+        metadatas: "Optional[List[Optional[Dict]]]" = None,
+    ) -> int:
+        """
+        Batch insert vectors into a collection via native Rust FFI.
+        Uses a single transaction for the entire batch for high throughput.
+        
+        Args:
+            namespace: Namespace name
+            collection: Collection name
+            ids: List of document ID strings
+            vectors: List of vector embeddings
+            metadatas: Optional list of metadata dicts
+            
+        Returns:
+            Number of successfully inserted vectors
+        """
+        import numpy as np
+        
+        if not ids or not vectors:
+            return 0
+        
+        n = len(ids)
+        dimension = len(vectors[0])
+        ns_bytes = namespace.encode("utf-8")
+        col_bytes = collection.encode("utf-8")
+        
+        # Build flat vector array (n * dimension floats)
+        flat_vectors = np.array(vectors, dtype=np.float32).flatten()
+        vec_ptr = flat_vectors.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+        
+        # Build C string array for IDs
+        id_bytes = [str(doc_id).encode("utf-8") for doc_id in ids]
+        IdArrayType = ctypes.c_char_p * n
+        id_array = IdArrayType(*id_bytes)
+        
+        # Build C string array for metadata JSONs
+        meta_bytes = []
+        for i in range(n):
+            if metadatas and i < len(metadatas) and metadatas[i]:
+                meta_bytes.append(json.dumps(metadatas[i]).encode("utf-8"))
+            else:
+                meta_bytes.append(None)
+        MetaArrayType = ctypes.c_char_p * n
+        meta_array = MetaArrayType(*meta_bytes)
+        
+        try:
+            result = self._lib.sochdb_collection_insert_batch(
+                self._handle,
+                ns_bytes,
+                col_bytes,
+                id_array,
+                vec_ptr,
+                ctypes.c_size_t(dimension),
+                meta_array,
+                ctypes.c_size_t(n),
+            )
+            return max(result, 0)
+        except (AttributeError, OSError):
+            # Fallback: per-vector insert if batch FFI not available
+            count = 0
+            for i, (doc_id, vector) in enumerate(zip(ids, vectors)):
+                vec_array = np.array(vector, dtype=np.float32)
+                vp = vec_array.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+                meta_json = None
+                if metadatas and i < len(metadatas) and metadatas[i]:
+                    meta_json = json.dumps(metadatas[i]).encode("utf-8")
+                try:
+                    r = self._lib.sochdb_collection_insert(
+                        self._handle, ns_bytes, col_bytes,
+                        str(doc_id).encode("utf-8"), vp, len(vector), meta_json,
+                    )
+                    if r == 0:
+                        count += 1
+                except (AttributeError, OSError):
+                    pass
+            return count
 
     def ffi_collection_keyword_search(
         self,

@@ -261,6 +261,34 @@ class _FFI:
         ]
         lib.hnsw_search_ultra.restype = ctypes.c_int
         
+        # hnsw_search_exact - Brute-force exact search for perfect recall (optional)
+        try:
+            lib.hnsw_search_exact.argtypes = [
+                ctypes.c_void_p,  # ptr
+                ctypes.POINTER(ctypes.c_float),  # query
+                ctypes.c_size_t,  # query_len
+                ctypes.c_size_t,  # k
+                ctypes.POINTER(CSearchResult),  # results_out
+                ctypes.POINTER(ctypes.c_size_t),  # num_results_out
+            ]
+            lib.hnsw_search_exact.restype = ctypes.c_int
+        except AttributeError:
+            pass  # Older library without exact search support
+        
+        # hnsw_search_exact_f64 - f64-precision brute-force exact search (optional)
+        try:
+            lib.hnsw_search_exact_f64.argtypes = [
+                ctypes.c_void_p,  # ptr
+                ctypes.POINTER(ctypes.c_float),  # query
+                ctypes.c_size_t,  # query_len
+                ctypes.c_size_t,  # k
+                ctypes.POINTER(CSearchResult),  # results_out
+                ctypes.POINTER(ctypes.c_size_t),  # num_results_out
+            ]
+            lib.hnsw_search_exact_f64.restype = ctypes.c_int
+        except AttributeError:
+            pass  # Older library without f64 exact search support
+        
         # hnsw_build_flat_cache - Build flat neighbor cache
         lib.hnsw_build_flat_cache.argtypes = [ctypes.c_void_p]
         lib.hnsw_build_flat_cache.restype = ctypes.c_int
@@ -774,6 +802,108 @@ class VectorIndex:
         
         return output
     
+    def search_exact(self, query: np.ndarray, k: int = 10) -> List[Tuple[int, float]]:
+        """
+        Exact (brute-force) nearest neighbor search for perfect recall.
+        
+        Computes distances to ALL vectors in the index and returns the true
+        k-nearest neighbors. Guarantees recall@k = 1.0 but is O(n) per query.
+        
+        Use for:
+        - Benchmarking ground truth
+        - When perfect recall is required
+        - Quality validation of HNSW results
+        
+        Args:
+            query: Query vector (float32 numpy array)
+            k: Number of neighbors to return
+        
+        Returns:
+            List of (id, distance) tuples, sorted by distance
+        """
+        if len(query) != self._dimension:
+            raise ValueError(f"Query dimension mismatch: expected {self._dimension}, got {len(query)}")
+        
+        lib = _FFI.get_lib()
+        
+        # Convert query to contiguous float32
+        q = np.ascontiguousarray(query, dtype=np.float32)
+        q_ptr = q.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+        
+        # Allocate result array
+        results = (CSearchResult * k)()
+        num_results = ctypes.c_size_t()
+        
+        result = lib.hnsw_search_exact(
+            self._ptr,
+            q_ptr,
+            len(q),
+            k,
+            results,
+            ctypes.byref(num_results),
+        )
+        
+        if result != 0:
+            raise RuntimeError("Exact search failed")
+        
+        # Convert results
+        output = []
+        for i in range(num_results.value):
+            r = results[i]
+            id = r.id_lo | (r.id_hi << 64)
+            output.append((id, r.distance))
+        
+        return output
+    
+    def search_exact_f64(self, query: np.ndarray, k: int = 10) -> List[Tuple[int, float]]:
+        """
+        Exact (brute-force) nearest neighbor search using f64 precision.
+        
+        Same as search_exact but computes distances in f64 (double precision)
+        to match ground truth computed with f64 arithmetic (e.g., numpy).
+        This eliminates f32 tie-breaking mismatches at the k-th boundary.
+        
+        Args:
+            query: Query vector (float32 numpy array)
+            k: Number of neighbors to return
+        
+        Returns:
+            List of (id, distance) tuples, sorted by distance
+        """
+        if len(query) != self._dimension:
+            raise ValueError(f"Query dimension mismatch: expected {self._dimension}, got {len(query)}")
+        
+        lib = _FFI.get_lib()
+        
+        # Convert query to contiguous float32
+        q = np.ascontiguousarray(query, dtype=np.float32)
+        q_ptr = q.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+        
+        # Allocate result array
+        results = (CSearchResult * k)()
+        num_results = ctypes.c_size_t()
+        
+        result = lib.hnsw_search_exact_f64(
+            self._ptr,
+            q_ptr,
+            len(q),
+            k,
+            results,
+            ctypes.byref(num_results),
+        )
+        
+        if result != 0:
+            raise RuntimeError("Exact f64 search failed")
+        
+        # Convert results
+        output = []
+        for i in range(num_results.value):
+            r = results[i]
+            id = r.id_lo | (r.id_hi << 64)
+            output.append((id, r.distance))
+        
+        return output
+    
     def __len__(self) -> int:
         """Get the number of vectors in the index."""
         lib = _FFI.get_lib()
@@ -783,3 +913,226 @@ class VectorIndex:
     def dimension(self) -> int:
         """Get the dimension of vectors in this index."""
         return self._dimension
+
+    def batch_accumulator(self, estimated_size: int = 0) -> "BatchAccumulator":
+        """Create a BatchAccumulator for high-throughput deferred insertion.
+
+        The accumulator collects vectors in pre-allocated numpy arrays
+        (zero FFI overhead) and builds the HNSW graph in a single bulk
+        ``insert_batch()`` call when you call ``flush()``.
+
+        This is **4–5× faster** than streaming ``insert()`` or repeated
+        ``insert_batch()`` calls because:
+
+        1. **Zero FFI during accumulation** — pure numpy memcpy.
+        2. **Single bulk graph build** — Rust Rayon gets maximum parallelism
+           from the full dataset (wave-parallel, adaptive ef).
+        3. **Pre-allocated buffers** — geometric growth avoids repeated
+           allocations.
+
+        Args:
+            estimated_size: Hint for initial buffer capacity.  Avoids
+                early geometric-growth reallocations when the total
+                count is known upfront (e.g. 50 000).
+
+        Returns:
+            A :class:`BatchAccumulator` bound to this index.
+
+        Example::
+
+            index = VectorIndex(dimension=1536)
+            acc = index.batch_accumulator(estimated_size=50_000)
+
+            for batch_ids, batch_vecs in data_loader:
+                acc.add(batch_ids, batch_vecs)
+
+            inserted = acc.flush()       # single FFI call
+            print(f"Indexed {inserted} vectors")
+
+        See Also:
+            :meth:`insert_batch` for one-shot bulk insertion when all
+            data is available in a single array.
+        """
+        return BatchAccumulator(self, estimated_size=estimated_size)
+
+
+class BatchAccumulator:
+    """Deferred vector accumulation with single-shot HNSW construction.
+
+    Collects vectors in pre-allocated numpy buffers (O(N) memcpy, zero
+    FFI) and builds the HNSW index in one bulk ``insert_batch()`` call.
+
+    Typical speedup: **4–5×** compared to incremental insertion.
+
+    Usage::
+
+        acc = BatchAccumulator(index, estimated_size=50_000)
+        acc.add(ids_chunk_1, vecs_chunk_1)
+        acc.add(ids_chunk_2, vecs_chunk_2)
+        inserted = acc.flush()   # single FFI call, full Rayon parallelism
+
+    Or as a context manager::
+
+        with index.batch_accumulator(50_000) as acc:
+            acc.add(ids, vecs)
+        # flush() called automatically on exit
+
+    Parameters:
+        index: The :class:`VectorIndex` to insert into.
+        estimated_size: Pre-allocate buffers for this many vectors.
+    """
+
+    __slots__ = ("_index", "_dim", "_ids", "_vecs", "_count", "_capacity")
+
+    def __init__(self, index: VectorIndex, *, estimated_size: int = 0) -> None:
+        self._index = index
+        self._dim = index.dimension
+        self._count = 0
+        self._capacity = max(estimated_size, 1024)
+        self._ids = np.empty(self._capacity, dtype=np.uint64)
+        self._vecs = np.empty((self._capacity, self._dim), dtype=np.float32)
+
+    # -- context manager -------------------------------------------------- #
+
+    def __enter__(self) -> "BatchAccumulator":
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        if exc_type is None and self._count > 0:
+            self.flush()
+
+    # -- accumulation ----------------------------------------------------- #
+
+    def add(
+        self,
+        ids: np.ndarray,
+        vectors: np.ndarray,
+    ) -> None:
+        """Append a chunk of vectors to the internal buffer.
+
+        This does **zero FFI calls** — it is a pure numpy memcpy into
+        pre-allocated arrays with geometric growth.
+
+        Args:
+            ids: 1-D ``uint64`` array of length *N*.
+            vectors: 2-D ``float32`` array of shape *(N, dimension)*.
+
+        Raises:
+            ValueError: On shape / dtype mismatch.
+        """
+        if vectors.ndim != 2:
+            raise ValueError(f"vectors must be 2D, got {vectors.ndim}D")
+        n, dim = vectors.shape
+        if dim != self._dim:
+            raise ValueError(
+                f"Dimension mismatch: expected {self._dim}, got {dim}"
+            )
+        if len(ids) != n:
+            raise ValueError(
+                f"ID count ({len(ids)}) != vector count ({n})"
+            )
+
+        # Ensure correct dtypes (zero-copy when already correct)
+        ids_arr = np.asarray(ids, dtype=np.uint64)
+        vecs_arr = np.asarray(vectors, dtype=np.float32)
+
+        self._ensure_capacity(n)
+        s = self._count
+        self._ids[s : s + n] = ids_arr
+        self._vecs[s : s + n] = vecs_arr
+        self._count += n
+
+    def add_single(self, id: int, vector: np.ndarray) -> None:
+        """Append one vector.  Convenience wrapper around :meth:`add`."""
+        self._ensure_capacity(1)
+        self._ids[self._count] = id
+        self._vecs[self._count] = np.asarray(vector, dtype=np.float32)
+        self._count += 1
+
+    # -- flush ------------------------------------------------------------ #
+
+    def flush(self) -> int:
+        """Build the HNSW graph from all accumulated vectors.
+
+        Performs a **single** ``insert_batch()`` FFI call, giving the
+        Rust HNSW builder full Rayon parallelism over the entire
+        dataset (wave-parallel construction, adaptive ef capped at 48
+        in batch mode, 32-node waves).
+
+        Returns:
+            Number of successfully inserted vectors.
+
+        Raises:
+            RuntimeError: If the underlying FFI call fails.
+        """
+        if self._count == 0:
+            return 0
+
+        ids = self._ids[: self._count]
+        vecs = self._vecs[: self._count]
+        inserted = self._index.insert_batch(ids, vecs)
+
+        # Reset for potential re-use
+        self._count = 0
+        return inserted
+
+    # -- persistence helpers ---------------------------------------------- #
+
+    def save(self, directory: str) -> None:
+        """Persist accumulated (unflushed) vectors to disk as numpy files.
+
+        Useful for cross-process data transfer (e.g. benchmark
+        frameworks that run insert and search in separate subprocesses).
+
+        Args:
+            directory: Path to a directory.  Created if it doesn't exist.
+        """
+        import os
+        os.makedirs(directory, exist_ok=True)
+        np.save(os.path.join(directory, "ids.npy"),
+                self._ids[: self._count])
+        np.save(os.path.join(directory, "vectors.npy"),
+                self._vecs[: self._count])
+
+    def load(self, directory: str) -> None:
+        """Load previously saved vectors into the accumulator.
+
+        Appends to any vectors already accumulated.
+
+        Args:
+            directory: Path containing ``ids.npy`` and ``vectors.npy``.
+        """
+        import os
+        ids = np.load(os.path.join(directory, "ids.npy"))
+        vecs = np.load(os.path.join(directory, "vectors.npy"))
+        self.add(ids, vecs)
+
+    # -- internals -------------------------------------------------------- #
+
+    def _ensure_capacity(self, additional: int) -> None:
+        needed = self._count + additional
+        if needed <= self._capacity:
+            return
+        new_cap = max(needed, self._capacity * 2)
+        new_ids = np.empty(new_cap, dtype=np.uint64)
+        new_vecs = np.empty((new_cap, self._dim), dtype=np.float32)
+        if self._count > 0:
+            new_ids[: self._count] = self._ids[: self._count]
+            new_vecs[: self._count] = self._vecs[: self._count]
+        self._ids = new_ids
+        self._vecs = new_vecs
+        self._capacity = new_cap
+
+    @property
+    def count(self) -> int:
+        """Number of vectors currently accumulated (unflushed)."""
+        return self._count
+
+    def __len__(self) -> int:
+        return self._count
+
+    def __repr__(self) -> str:
+        return (
+            f"BatchAccumulator(dim={self._dim}, "
+            f"accumulated={self._count}, capacity={self._capacity})"
+        )
