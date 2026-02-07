@@ -1,5 +1,5 @@
 """
-SochDB Python SDK v0.4.6
+SochDB Python SDK v0.5.0
 
 Dual-mode architecture: Embedded (FFI) + Server (gRPC/IPC)
 
@@ -32,7 +32,7 @@ Example (Server Mode):
     client.put_kv("key", b"value")
 """
 
-__version__ = "0.4.7"
+__version__ = "0.5.0"
 
 # Embedded mode (FFI)
 from .database import Database, Transaction
@@ -45,7 +45,7 @@ from .namespace import (
     SearchRequest,
     SearchResults,
 )
-from .vector import VectorIndex
+from .vector import VectorIndex, BatchAccumulator
 
 # Queue API (v0.4.3)
 from .queue import (
@@ -115,6 +115,7 @@ __all__ = [
     "SearchRequest",
     "SearchResults",
     "VectorIndex",
+    "BatchAccumulator",
     
     # Queue API (v0.4.3)
     "PriorityQueue",
