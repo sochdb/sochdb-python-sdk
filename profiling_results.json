@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-01-21T00:28:50.295834",
+  "timestamp": "2026-02-09T23:25:45.813348",
   "config": {
     "num_vectors": 1000,
     "dimension": 768,
@@ -7,23 +7,23 @@
     "ef_construction": 200,
     "max_connections": 16,
     "safe_mode": "0",
-    "profiling_enabled": "1"
+    "profiling_enabled": "0"
   },
   "summary": {
     "total_vectors": 1000,
-    "total_insert_time_ms": 254.603166,
-    "vectors_per_second": 3927.680930723383,
-    "us_per_vector": 254.603166,
-    "search_time_ms": 0.844084,
-    "peak_memory_mb": 9.460450172424316,
+    "total_insert_time_ms": 148.535125,
+    "vectors_per_second": 6732.4143026775655,
+    "us_per_vector": 148.535125,
+    "search_time_ms": 0.247833,
+    "peak_memory_mb": 9.40407657623291,
     "index_size": 1000
   },
   "memory": {
-    "peak_mb": 9.460450172424316,
-    "current_mb": 3.634946823120117,
+    "peak_mb": 9.40407657623291,
+    "current_mb": 3.59774112701416,
     "allocations": 0,
     "vector_data_mb": 2.93731689453125,
-    "overhead_mb": 6.523133277893066
+    "overhead_mb": 6.46675968170166
   },
   "python_layer": {
     "name": "python",
@@ -31,98 +31,98 @@
       "numpy_ascontiguous": {
         "name": "numpy_ascontiguous",
         "count": 1,
-        "total_ms": 0.005833,
-        "mean_ms": 0.005833,
+        "total_ms": 0.003292,
+        "mean_ms": 0.003292,
         "std_ms": 0,
-        "min_ms": 0.005833,
-        "max_ms": 0.005833,
-        "p50_ms": 0.005833,
-        "p95_ms": 0.005833,
-        "p99_ms": 0.005833
+        "min_ms": 0.003292,
+        "max_ms": 0.003292,
+        "p50_ms": 0.003292,
+        "p95_ms": 0.003292,
+        "p99_ms": 0.003292
       },
       "dtype_conversion": {
         "name": "dtype_conversion",
         "count": 1,
-        "total_ms": 0.003875,
-        "mean_ms": 0.003875,
+        "total_ms": 0.002791,
+        "mean_ms": 0.002791,
         "std_ms": 0,
-        "min_ms": 0.003875,
-        "max_ms": 0.003875,
-        "p50_ms": 0.003875,
-        "p95_ms": 0.003875,
-        "p99_ms": 0.003875
+        "min_ms": 0.002791,
+        "max_ms": 0.002791,
+        "p50_ms": 0.002791,
+        "p95_ms": 0.002791,
+        "p99_ms": 0.002791
       },
       "data_validation": {
         "name": "data_validation",
         "count": 1,
-        "total_ms": 0.00475,
-        "mean_ms": 0.00475,
+        "total_ms": 0.003167,
+        "mean_ms": 0.003167,
         "std_ms": 0,
-        "min_ms": 0.00475,
-        "max_ms": 0.00475,
-        "p50_ms": 0.00475,
-        "p95_ms": 0.00475,
-        "p99_ms": 0.00475
+        "min_ms": 0.003167,
+        "max_ms": 0.003167,
+        "p50_ms": 0.003167,
+        "p95_ms": 0.003167,
+        "p99_ms": 0.003167
       },
       "ffi_ptr_creation": {
         "name": "ffi_ptr_creation",
         "count": 1,
-        "total_ms": 0.035959,
-        "mean_ms": 0.035959,
+        "total_ms": 0.024125,
+        "mean_ms": 0.024125,
         "std_ms": 0,
-        "min_ms": 0.035959,
-        "max_ms": 0.035959,
-        "p50_ms": 0.035959,
-        "p95_ms": 0.035959,
-        "p99_ms": 0.035959
+        "min_ms": 0.024125,
+        "max_ms": 0.024125,
+        "p50_ms": 0.024125,
+        "p95_ms": 0.024125,
+        "p99_ms": 0.024125
       },
       "ffi_call_overhead": {
         "name": "ffi_call_overhead",
         "count": 1,
-        "total_ms": 0.002042,
-        "mean_ms": 0.002042,
+        "total_ms": 0.001542,
+        "mean_ms": 0.001542,
         "std_ms": 0,
-        "min_ms": 0.002042,
-        "max_ms": 0.002042,
-        "p50_ms": 0.002042,
-        "p95_ms": 0.002042,
-        "p99_ms": 0.002042
+        "min_ms": 0.001542,
+        "max_ms": 0.001542,
+        "p50_ms": 0.001542,
+        "p95_ms": 0.001542,
+        "p99_ms": 0.001542
       },
       "batch_total": {
         "name": "batch_total",
         "count": 1,
-        "total_ms": 254.454667,
-        "mean_ms": 254.454667,
+        "total_ms": 148.431958,
+        "mean_ms": 148.431958,
         "std_ms": 0,
-        "min_ms": 254.454667,
-        "max_ms": 254.454667,
-        "p50_ms": 254.454667,
-        "p95_ms": 254.454667,
-        "p99_ms": 254.454667
+        "min_ms": 148.431958,
+        "max_ms": 148.431958,
+        "p50_ms": 148.431958,
+        "p95_ms": 148.431958,
+        "p99_ms": 148.431958
       },
       "index_creation": {
         "name": "index_creation",
         "count": 1,
-        "total_ms": 250.443417,
-        "mean_ms": 250.443417,
+        "total_ms": 2.620625,
+        "mean_ms": 2.620625,
         "std_ms": 0,
-        "min_ms": 250.443417,
-        "max_ms": 250.443417,
-        "p50_ms": 250.443417,
-        "p95_ms": 250.443417,
-        "p99_ms": 250.443417
+        "min_ms": 2.620625,
+        "max_ms": 2.620625,
+        "p50_ms": 2.620625,
+        "p95_ms": 2.620625,
+        "p99_ms": 2.620625
       },
       "search_total": {
         "name": "search_total",
         "count": 1,
-        "total_ms": 0.844084,
-        "mean_ms": 0.844084,
+        "total_ms": 0.247833,
+        "mean_ms": 0.247833,
         "std_ms": 0,
-        "min_ms": 0.844084,
-        "max_ms": 0.844084,
-        "p50_ms": 0.844084,
-        "p95_ms": 0.844084,
-        "p99_ms": 0.844084
+        "min_ms": 0.247833,
+        "max_ms": 0.247833,
+        "p50_ms": 0.247833,
+        "p95_ms": 0.247833,
+        "p99_ms": 0.247833
       }
     },
     "counts": {
