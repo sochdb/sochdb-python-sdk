@@ -5,6 +5,20 @@ All notable changes to the SochDB Python SDK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.3] - 2026-02-10
+
+### Changed
+
+- Version bump aligned with SochDB core 0.4.9
+- Added Engine Internals status table to README (§4 Architecture Overview)
+- Cost-based optimizer documented as production-ready
+- Adaptive group commit documented as implemented
+- WAL compaction documented as partially implemented
+
+### Fixed
+
+- Added missing `QuantizationType` export to `__init__.py`
+
 ## [0.4.5] - 2026-01-23
 
 ### Added

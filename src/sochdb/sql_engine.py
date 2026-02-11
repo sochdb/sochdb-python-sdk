@@ -517,7 +517,10 @@ class SQLExecutor:
     def _get_path(self, path: str) -> Optional[bytes]:
         return self._db.get_path(path)
 
-    def _delete_path(self, path: str) -> None:
+    def _delete_path(self, path) -> None:
+        # path may be str or bytes (e.g. from scan_prefix)
+        if isinstance(path, bytes):
+            path = path.decode("utf-8")
         if hasattr(self._db, "delete_path"):
             self._db.delete_path(path)
         else:

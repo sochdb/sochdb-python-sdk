@@ -1,5 +1,5 @@
 """
-SochDB Python SDK v0.5.2
+SochDB Python SDK v0.5.3
 
 Dual-mode architecture: Embedded (FFI) + Server (gRPC/IPC)
 
@@ -32,16 +32,17 @@ Example (Server Mode):
     client.put_kv("key", b"value")
 """
 
-__version__ = "0.5.2"
+__version__ = "0.5.3"
 
 # Embedded mode (FFI)
-from .database import Database, Transaction
+from .database import Database, Transaction, IsolationLevel
 from .namespace import (
     Namespace,
     NamespaceConfig,
     Collection,
     CollectionConfig,
     DistanceMetric,
+    QuantizationType,
     SearchRequest,
     SearchResults,
 )
@@ -83,11 +84,25 @@ from .errors import (
     SochDBError,
     ConnectionError,
     TransactionError,
+    TransactionConflictError,
     ProtocolError,
     DatabaseError,
     ErrorCode,
     NamespaceNotFoundError,
     NamespaceExistsError,
+    NamespaceError,
+    NamespaceAccessError,
+    CollectionError,
+    CollectionNotFoundError,
+    CollectionExistsError,
+    CollectionConfigError,
+    ValidationError,
+    DimensionMismatchError,
+    InvalidMetadataError,
+    ScopeViolationError,
+    QueryError,
+    QueryTimeoutError,
+    EmbeddingError,
     # Lock errors (v0.4.1)
     LockError,
     DatabaseLockedError,
@@ -107,11 +122,13 @@ __all__ = [
     # Embedded mode (FFI)
     "Database",
     "Transaction",
+    "IsolationLevel",
     "Namespace",
     "NamespaceConfig",
     "Collection",
     "CollectionConfig",
     "DistanceMetric",
+    "QuantizationType",
     "SearchRequest",
     "SearchResults",
     "VectorIndex",
@@ -156,10 +173,24 @@ __all__ = [
     "SochDBError",
     "ConnectionError",
     "TransactionError",
+    "TransactionConflictError",
     "ProtocolError",
     "DatabaseError",
     "NamespaceNotFoundError",
     "NamespaceExistsError",
+    "NamespaceError",
+    "NamespaceAccessError",
+    "CollectionError",
+    "CollectionNotFoundError",
+    "CollectionExistsError",
+    "CollectionConfigError",
+    "ValidationError",
+    "DimensionMismatchError",
+    "InvalidMetadataError",
+    "ScopeViolationError",
+    "QueryError",
+    "QueryTimeoutError",
+    "EmbeddingError",
     "ErrorCode",
     # Lock errors (v0.4.1)
     "LockError",

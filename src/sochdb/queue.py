@@ -160,17 +160,54 @@ class QueueKey:
     
     @classmethod
     def decode(cls, data: bytes) -> 'QueueKey':
-        """Decode key from bytes."""
-        # Parse: queue/<queue_id>/<priority>/<ready_ts>/<seq>/<task_id>
-        parts = data.split(b"/")
-        if len(parts) < 6 or parts[0] != b"queue":
+        """Decode key from bytes.
+        
+        Key layout: queue/<queue_id>/<priority:8>/<ready_ts:8>/<seq:8>/<task_id>
+        
+        Note: We cannot use split(b"/") because the 8-byte binary fields
+        can contain 0x2F (the '/' byte). Instead, parse positionally.
+        """
+        # Must start with "queue/"
+        if not data.startswith(b"queue/"):
             raise ValueError(f"Invalid queue key format: {data}")
         
-        queue_id = parts[1].decode('utf-8')
-        priority = decode_i64_be(parts[2])
-        ready_ts = decode_u64_be(parts[3])
-        sequence = decode_u64_be(parts[4])
-        task_id = parts[5].decode('utf-8')
+        rest = data[6:]  # after "queue/"
+        
+        # Find end of queue_id (next '/')
+        sep1 = rest.index(b"/")
+        queue_id = rest[:sep1].decode('utf-8')
+        pos = sep1 + 1
+        
+        # Next 8 bytes: priority (i64 big-endian)
+        priority = decode_i64_be(rest[pos:pos+8])
+        pos += 8
+        
+        # Skip the separator '/'
+        if rest[pos:pos+1] != b"/":
+            raise ValueError(f"Expected '/' separator after priority")
+        pos += 1
+        
+        # Next 8 bytes: ready_ts (u64 big-endian)
+        ready_ts = decode_u64_be(rest[pos:pos+8])
+        pos += 8
+        
+        # Skip separator
+        if rest[pos:pos+1] != b"/":
+            raise ValueError(f"Expected '/' separator after ready_ts")
+        pos += 1
+        
+        # Next 8 bytes: sequence (u64 big-endian)
+        sequence = decode_u64_be(rest[pos:pos+8])
+        pos += 8
+        
+        # Skip separator
+        if rest[pos:pos+1] != b"/":
+            raise ValueError(f"Expected '/' separator after sequence")
+        pos += 1
+        
+        # Remainder: task_id (UTF-8 string, may contain '/')
+
+        task_id = rest[pos:].decode('utf-8')
         
         return cls(
             queue_id=queue_id,
@@ -915,59 +952,63 @@ class PriorityQueue:
             
         Complexity: O(log N) with ordered index
         """
-        timeout = visibility_timeout_ms or self._config.visibility_timeout_ms
-        now = self._now_ms()
-        
-        # Clean up expired claims
-        self._cleanup_expired_claims(now)
-        
-        # Scan for visible tasks
-        prefix = QueueKey.prefix(self._config.queue_id)
-        
-        with self._backend.begin_transaction() as txn:
-            for key_bytes, value_bytes in self._scan_prefix(prefix):
-                try:
-                    key = QueueKey.decode(key_bytes)
-                    task = Task.decode_value(key, value_bytes)
-                    
-                    # Skip if not visible
-                    if not task.is_visible(now):
+        # Acquire lock to prevent concurrent double-claiming.
+        # The scan→check→claim sequence spans multiple backend calls;
+        # without the lock two workers can scan the same task and both claim it.
+        with self._lock:
+            timeout = visibility_timeout_ms or self._config.visibility_timeout_ms
+            now = self._now_ms()
+            
+            # Clean up expired claims
+            self._cleanup_expired_claims(now)
+            
+            # Scan for visible tasks
+            prefix = QueueKey.prefix(self._config.queue_id)
+            
+            with self._backend.begin_transaction() as txn:
+                for key_bytes, value_bytes in self._scan_prefix(prefix):
+                    try:
+                        key = QueueKey.decode(key_bytes)
+                        task = Task.decode_value(key, value_bytes)
+                        
+                        # Skip if not visible
+                        if not task.is_visible(now):
+                            continue
+                        
+                        # Check if already claimed by another worker
+                        claim = self._get_claim(task.task_id)
+                        if claim and not claim.is_expired(now) and claim.owner != worker_id:
+                            continue  # Contention, try next
+                        
+                        # Create claim
+                        new_claim = Claim(
+                            task_id=task.task_id,
+                            owner=worker_id,
+                            claimed_at=now,
+                            expires_at=now + timeout,
+                        )
+                        
+                        # Update task state
+                        task.state = TaskState.CLAIMED
+                        task.attempts += 1
+                        task.claimed_at = now
+                        task.claimed_by = worker_id
+                        task.lease_expires_at = new_claim.expires_at
+                        
+                        # Store updated task and claim
+                        txn.put(key.encode(), task.encode_value())
+                        txn.put(
+                            new_claim.encode_key(self._config.queue_id),
+                            new_claim.encode_value(),
+                        )
+                        
+                        return task
+                        
+                    except Exception:
+                        # Skip malformed entries
                         continue
-                    
-                    # Check if already claimed by another worker
-                    claim = self._get_claim(task.task_id)
-                    if claim and not claim.is_expired(now) and claim.owner != worker_id:
-                        continue  # Contention, try next
-                    
-                    # Create claim
-                    new_claim = Claim(
-                        task_id=task.task_id,
-                        owner=worker_id,
-                        claimed_at=now,
-                        expires_at=now + timeout,
-                    )
-                    
-                    # Update task state
-                    task.state = TaskState.CLAIMED
-                    task.attempts += 1
-                    task.claimed_at = now
-                    task.claimed_by = worker_id
-                    task.lease_expires_at = new_claim.expires_at
-                    
-                    # Store updated task and claim
-                    txn.put(key.encode(), task.encode_value())
-                    txn.put(
-                        new_claim.encode_key(self._config.queue_id),
-                        new_claim.encode_value(),
-                    )
-                    
-                    return task
-                    
-                except Exception:
-                    # Skip malformed entries
-                    continue
-        
-        return None
+            
+            return None
     
     def ack(self, task_id: str) -> bool:
         """

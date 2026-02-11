@@ -19,6 +19,8 @@ cd sochdb-python-sdk
 pip install -e .
 ```
 
+> **Development builds (contributors only):** If you're modifying the Rust core and need to rebuild the native FFI libraries, run `python build_native.py --libs` before installing. This requires the Rust toolchain (`cargo`). Regular users don't need this — pre-built native libraries are bundled in the wheel.
+
 ---
 
 ## Architecture: Flexible Deployment
@@ -76,48 +78,54 @@ LLM-Optimized Embedded Database with Native Vector Search
 
 ---
 
+
 ## Table of Contents
 
 1. [Quick Start](#1-quick-start)
 2. [Installation](#2-installation)
-3. [Architecture Overview](#3-architecture-overview)
-4. [Core Key-Value Operations](#4-core-key-value-operations)
-5. [Transactions (ACID with SSI)](#5-transactions-acid-with-ssi)
-6. [Query Builder](#6-query-builder)
-7. [Prefix Scanning](#7-prefix-scanning)
-8. [SQL Operations](#8-sql-operations)
-9. [Table Management & Index Policies](#9-table-management--index-policies)
-10. [Namespaces & Multi-Tenancy](#10-namespaces--multi-tenancy)
-11. [Collections & Vector Search](#11-collections--vector-search)
-12. [Hybrid Search (Vector + BM25)](#12-hybrid-search-vector--bm25)
-13. [Graph Operations](#13-graph-operations)
-14. [Temporal Graph (Time-Travel)](#14-temporal-graph-time-travel)
-15. [Semantic Cache](#15-semantic-cache)
-16. [Context Query Builder (LLM Optimization)](#16-context-query-builder-llm-optimization)
-17. [Memory System](#17-memory-system)
-18. [Session Management](#18-session-management)
-19. [Atomic Multi-Index Writes](#19-atomic-multi-index-writes)
-20. [Recovery & WAL Management](#20-recovery--wal-management)
-21. [Checkpoints & Snapshots](#21-checkpoints--snapshots)
-22. [Compression & Storage](#22-compression--storage)
-23. [Statistics & Monitoring](#23-statistics--monitoring)
-24. [Distributed Tracing](#24-distributed-tracing)
-25. [Workflow & Run Tracking](#25-workflow--run-tracking)
-26. [Server Mode (gRPC Client)](#26-server-mode-grpc-client)
-27. [IPC Client (Unix Sockets)](#27-ipc-client-unix-sockets)
-28. [Standalone VectorIndex](#28-standalone-vectorindex)
-29. [Vector Utilities](#29-vector-utilities)
-30. [Data Formats (TOON/JSON/Columnar)](#30-data-formats-toonjsoncolumnar)
-31. [Policy Service](#31-policy-service)
-32. [MCP (Model Context Protocol)](#32-mcp-model-context-protocol)
-33. [Configuration Reference](#33-configuration-reference)
-34. [Error Handling](#34-error-handling)
-35. [Async Support](#35-async-support)
-36. [Building & Development](#36-building--development)
-37. [Complete Examples](#37-complete-examples)
-38. [Migration Guide](#38-migration-guide)
+3. [Features](#3-features)
+   - [Namespace API](#namespace-api---multi-tenant-isolation)
+   - [Priority Queue API](#priority-queue-api---task-processing)
+4. [Architecture Overview](#4-architecture-overview)
+5. [Core Key-Value Operations](#5-core-key-value-operations)
+6. [Transactions (ACID with SSI)](#6-transactions-acid-with-ssi)
+7. [Query Builder](#7-query-builder)
+8. [Prefix Scanning](#8-prefix-scanning)
+9. [SQL Operations](#9-sql-operations)
+10. [Table Management & Index Policies](#10-table-management--index-policies)
+11. [Namespaces & Collections](#11-namespaces--collections)
+12. [Priority Queues](#12-priority-queues)
+13. [Vector Search](#13-vector-search)
+14. [Hybrid Search (Vector + BM25)](#14-hybrid-search-vector--bm25)
+15. [Graph Operations](#15-graph-operations)
+16. [Temporal Graph (Time-Travel)](#16-temporal-graph-time-travel)
+17. [Semantic Cache](#17-semantic-cache)
+18. [Memory System](#18-memory-system)
+19. [Session Management](#19-session-management)
+20. [Context Query Builder (LLM Optimization)](#20-context-query-builder-llm-optimization)
+21. [Atomic Multi-Index Writes](#21-atomic-multi-index-writes)
+22. [Recovery & WAL Management](#22-recovery--wal-management)
+23. [Checkpoints & Snapshots](#23-checkpoints--snapshots)
+24. [Compression & Storage](#24-compression--storage)
+25. [Statistics & Monitoring](#25-statistics--monitoring)
+26. [Distributed Tracing](#26-distributed-tracing)
+27. [Workflow & Run Tracking](#27-workflow--run-tracking)
+28. [Server Mode (gRPC Client)](#28-server-mode-grpc-client)
+29. [IPC Client (Unix Sockets)](#29-ipc-client-unix-sockets)
+30. [Standalone VectorIndex](#30-standalone-vectorindex)
+31. [Vector Utilities](#31-vector-utilities)
+32. [Data Formats (TOON/JSON/Columnar)](#32-data-formats-toonjsoncolumnar)
+33. [Policy Service](#33-policy-service)
+34. [MCP (Model Context Protocol)](#34-mcp-model-context-protocol)
+35. [Configuration Reference](#35-configuration-reference)
+36. [Error Handling](#36-error-handling)
+37. [Async Support](#37-async-support)
+38. [Building & Development](#38-building--development)
+39. [Complete Examples](#39-complete-examples)
+40. [Migration Guide](#40-migration-guide)
 
 ---
+
 
 ## 1. Quick Start
 
@@ -407,52 +415,7 @@ tx.commit()  # Single fsync for entire batch
 
 ---
 
-# SochDB Python SDK Documentation
-
-LLM-Optimized Embedded Database with Native Vector Search
-
----
-
-## Table of Contents
-
-1. [Quick Start](#1-quick-start)
-2. [Installation](#2-installation)
-3. [Architecture Overview](#3-architecture-overview)
-4. [Core Key-Value Operations](#4-core-key-value-operations)
-5. [Transactions (ACID with SSI)](#5-transactions-acid-with-ssi)
-6. [Query Builder](#6-query-builder)
-7. [Prefix Scanning](#7-prefix-scanning)
-8. [SQL Operations](#8-sql-operations)
-9. [Table Management & Index Policies](#9-table-management--index-policies)
-10. [Namespaces & Multi-Tenancy](#10-namespaces--multi-tenancy)
-11. [Collections & Vector Search](#11-collections--vector-search)
-12. [Hybrid Search (Vector + BM25)](#12-hybrid-search-vector--bm25)
-13. [Graph Operations](#13-graph-operations)
-14. [Temporal Graph (Time-Travel)](#14-temporal-graph-time-travel)
-15. [Semantic Cache](#15-semantic-cache)
-16. [Context Query Builder (LLM Optimization) and Session](#16-context-query-builder-llm-optimization)
-17. [Priority Queue & Task Management](#17-priority-queue--task-management)
-18. [Memory System (LLM-Native)](#18-memory-system-llm-native)
-19. [Atomic Multi-Index Writes](#19-atomic-multi-index-writes)
-20. [Recovery & WAL Management](#20-recovery--wal-management)
-21. [Checkpoints & Snapshots](#21-checkpoints--snapshots)
-22. [Compression & Storage](#22-compression--storage)
-23. [Statistics & Monitoring](#23-statistics--monitoring)
-24. [Distributed Tracing](#24-distributed-tracing)
-25. [Workflow & Run Tracking](#25-workflow--run-tracking)
-26. [Server Mode (gRPC Client)](#26-server-mode-grpc-client)
-27. [IPC Client (Unix Sockets)](#27-ipc-client-unix-sockets)
-28. [Standalone VectorIndex](#28-standalone-vectorindex)
-29. [Vector Utilities](#29-vector-utilities)
-30. [Data Formats (TOON/JSON/Columnar)](#30-data-formats-toonjsoncolumnar)
-31. [Policy Service](#31-policy-service)
-32. [MCP (Model Context Protocol)](#32-mcp-model-context-protocol)
-33. [Configuration Reference](#33-configuration-reference)
-34. [Error Handling](#34-error-handling)
-35. [Async Support](#35-async-support)
-36. [Building & Development](#36-building--development)
-37. [Complete Examples](#37-complete-examples)
-38. [Migration Guide](#38-migration-guide)
+## API Reference
 
 ---
 
@@ -516,7 +479,47 @@ pip install sochdb[all]
 
 ---
 
-## 3. Architecture Overview
+## 3. Features
+
+### Namespace API — Multi-Tenant Isolation
+
+Organize data into logical namespaces with per-tenant collections, vector search, and metadata filtering.
+
+```python
+ns = db.create_namespace("tenant_123", display_name="Acme Corp", labels={"tier": "premium"})
+coll = ns.create_collection("documents", dimension=384, distance_metric=DistanceMetric.COSINE)
+coll.add("doc1", vector=[0.1]*384, metadata={"type": "report"})
+results = coll.search(query_vector=[0.1]*384, top_k=5)
+```
+
+See [§11 Namespaces & Collections](#11-namespaces--collections) for the full API.
+
+### Priority Queue API — Task Processing
+
+First-class priority queue with atomic claim protocol, visibility timeouts, and at-least-once delivery.
+
+```python
+queue = PriorityQueue.from_database(db, "tasks")
+task_id = queue.enqueue(priority=10, payload=b"high priority")
+task = queue.dequeue(worker_id="worker-1")
+queue.ack(task.task_id)   # Mark complete
+```
+
+See [§12 Priority Queues](#12-priority-queues) for the full API.
+
+---
+
+## 4. Architecture Overview
+
+### Engine Internals
+
+| Component | Status | Description |
+|-----------|--------|-------------|
+| **Cost-based optimizer** | ✅ Production-ready | Full cost model with cardinality estimation (HyperLogLog + histograms), join-order DP, token-budget planning, and plan caching with configurable TTL |
+| **Adaptive group commit** | ✅ Implemented | Little's Law-based batch sizing with EMA arrival-rate tracking for automatic write throughput optimization |
+| **WAL compaction** | ⚠️ Partially implemented | Manual `checkpoint()` + `truncate_wal()` works end-to-end; automatic background compaction planned |
+| **HNSW vector index** | ✅ Production-ready | Lock-free concurrent reads, batch insert, quantization support |
+| **SSI transactions** | ✅ Production-ready | Serializable Snapshot Isolation with conflict detection |
 
 SochDB supports two deployment modes:
 
@@ -585,7 +588,7 @@ value = client.get(b"key", namespace="default")
 
 ---
 
-## 4. Core Key-Value Operations
+## 5. Core Key-Value Operations
 
 All keys and values are **bytes**.
 
@@ -604,7 +607,7 @@ db.put(b"user:2", b"Bob")
 user = db.get(b"user:1")  # Returns b"Alice" or None
 
 # Check existence
-exists = db.exists(b"user:1")  # True
+exists = db.get(b"user:1") is not None  # True
 
 # Delete data
 db.delete(b"user:1")
@@ -628,8 +631,8 @@ name = db.get_path("users/alice/name")  # b"Alice Smith"
 # Delete by path
 db.delete_path("users/alice/email")
 
-# List at path (like listing directory)
-children = db.list_path("users/")  # ["alice", "bob"]
+# Scan by path prefix
+results = list(db.scan_prefix(b"users/"))  # All keys under users/
 ```
 
 ### With TTL (Time-To-Live)
@@ -645,19 +648,21 @@ db.put(b"permanent_key", b"value", ttl_seconds=0)
 ### Batch Operations
 
 ```python
-# Batch put (more efficient than individual puts)
-db.put_batch([
-    (b"key1", b"value1"),
-    (b"key2", b"value2"),
-    (b"key3", b"value3"),
-])
+# Use a transaction for efficient batch writes
+with db.transaction() as txn:
+    txn.put(b"key1", b"value1")
+    txn.put(b"key2", b"value2")
+    txn.put(b"key3", b"value3")
 
-# Batch get
-values = db.get_batch([b"key1", b"key2", b"key3"])
-# Returns: [b"value1", b"value2", b"value3"] (None for missing keys)
+# Individual reads
+v1 = db.get(b"key1")  # b"value1" or None
+v2 = db.get(b"key2")
 
-# Batch delete
-db.delete_batch([b"key1", b"key2", b"key3"])
+# Batch delete via transaction
+with db.transaction() as txn:
+    txn.delete(b"key1")
+    txn.delete(b"key2")
+    txn.delete(b"key3")
 ```
 
 ### Context Manager
@@ -670,7 +675,7 @@ with Database.open("./my_db") as db:
 
 ---
 
-## 5. Transactions (ACID with SSI)
+## 6. Transactions (ACID with SSI)
 
 SochDB provides full ACID transactions with **Serializable Snapshot Isolation (SSI)**.
 
@@ -757,15 +762,11 @@ with db.transaction() as txn:
     txn.put(key, value)
     txn.get(key)
     txn.delete(key)
-    txn.exists(key)
     
     # Path-based
     txn.put_path(path, value)
     txn.get_path(path)
-    
-    # Batch operations
-    txn.put_batch(pairs)
-    txn.get_batch(keys)
+    txn.delete_path(path)
     
     # Scanning
     for k, v in txn.scan_prefix(b"prefix/"):
@@ -795,7 +796,7 @@ with db.transaction(isolation=IsolationLevel.READ_COMMITTED) as txn:
 
 ---
 
-## 6. Query Builder
+## 7. Query Builder
 
 Fluent API for building efficient queries with predicate pushdown.
 
@@ -866,7 +867,7 @@ with db.transaction() as txn:
 
 ---
 
-## 7. Prefix Scanning
+## 8. Prefix Scanning
 
 Iterate over keys with common prefixes efficiently.
 
@@ -927,7 +928,7 @@ for batch in db.scan_stream(b"logs/", batch_size=10000):
 
 ---
 
-## 8. SQL Operations
+## 9. SQL Operations
 
 Execute SQL queries for familiar relational patterns.
 
@@ -1060,7 +1061,7 @@ db.execute_sql("INSERT OR IGNORE INTO users VALUES (1, 'Alice')")
 
 ---
 
-## 9. Table Management & Index Policies
+## 10. Table Management & Index Policies
 
 ### Table Information
 
@@ -1111,7 +1112,7 @@ print(f"Policy: {policy}")  # "scan_optimized"
 
 ---
 
-## 10. Namespaces & Multi-Tenancy
+## 11. Namespaces & Collections
 
 Organize data into logical namespaces for tenant isolation.
 
@@ -1203,7 +1204,338 @@ db.copy_between_namespaces(
 
 ---
 
-## 11. Collections & Vector Search
+## 12. Priority Queues
+
+SochDB provides a first-class priority queue implementation with atomic claim protocol for reliable distributed task processing. The queue supports both embedded (FFI) and server (gRPC) modes.
+
+### Features
+
+- **Priority-based ordering**: Tasks dequeued by priority, then ready time, then sequence
+- **Atomic claim protocol**: Linearizable claim semantics prevent double-delivery
+- **Visibility timeout**: Automatic retry for failed workers (at-least-once delivery)
+- **Delayed tasks**: Schedule tasks for future execution
+- **Batch operations**: Enqueue multiple tasks atomically
+- **Streaming Top-K**: O(N log K) selection for efficient ranking
+- **Dual-mode support**: Works with embedded Database or gRPC SochDBClient
+
+### Quick Start
+
+```python
+from sochdb import Database, PriorityQueue, create_queue
+
+# Create queue from database
+db = Database.open("./queue_db")
+queue = PriorityQueue.from_database(db, "my_queue")
+
+# Or use convenience function (auto-detects backend)
+queue = create_queue(db, "my_queue")
+
+# Enqueue tasks with priority
+task_id1 = queue.enqueue(priority=10, payload=b"high priority task")
+task_id2 = queue.enqueue(priority=1, payload=b"low priority task")
+
+# Dequeue tasks (highest priority first)
+task = queue.dequeue(worker_id="worker-1")
+if task:
+    print(f"Processing: {task.payload}")
+    # Process task...
+    queue.ack(task.task_id)  # Mark as completed
+```
+
+### Enqueue Operations
+
+```python
+# Simple enqueue with priority
+task_id = queue.enqueue(
+    priority=10,
+    payload=b"task data",
+)
+
+# Delayed task (execute after 60 seconds)
+task_id = queue.enqueue(
+    priority=5,
+    payload=b"delayed task",
+    delay_ms=60000,
+)
+
+# Batch enqueue (atomic)
+task_ids = queue.enqueue_batch([
+    (10, b"task 1"),
+    (20, b"task 2"),
+    (15, b"task 3"),
+])
+```
+
+### Dequeue and Processing
+
+```python
+# Dequeue with automatic visibility timeout
+task = queue.dequeue(worker_id="worker-1")
+
+if task:
+    try:
+        # Process the task
+        result = process_task(task.payload)
+        
+        # Mark as successfully completed
+        queue.ack(task.task_id)
+        
+    except Exception as e:
+        # Return to queue for retry (optionally change priority)
+        queue.nack(
+            task_id=task.task_id,
+            new_priority=task.priority - 1  # Lower priority on retry
+        )
+```
+
+### Peek and Stats
+
+```python
+# Peek at next task without claiming
+task = queue.peek()
+if task:
+    print(f"Next task: {task.payload}, priority: {task.priority}")
+
+# Get queue statistics
+stats = queue.stats()
+print(f"Pending: {stats['pending']}")
+print(f"Claimed: {stats['claimed']}")
+print(f"Total: {stats['total']}")
+
+# List all tasks (for monitoring)
+tasks = queue.list_tasks(limit=100)
+for task in tasks:
+    print(f"Task {task.task_id}: priority={task.priority}, status={task.status}")
+```
+
+### Configuration
+
+```python
+from sochdb import PriorityQueue, QueueConfig
+
+# Custom configuration
+config = QueueConfig(
+    queue_id="my_queue",
+    visibility_timeout_ms=30000,  # 30 seconds
+    max_retries=3,
+    dead_letter_queue="dlq_queue",
+)
+
+queue = PriorityQueue.from_database(db, config=config)
+```
+
+### Worker Pattern
+
+```python
+import time
+
+def worker_loop(worker_id: str):
+    """Simple worker loop."""
+    while True:
+        task = queue.dequeue(worker_id=worker_id)
+        
+        if task:
+            try:
+                # Process task
+                result = process_task(task.payload)
+                queue.ack(task.task_id)
+                print(f"✓ Completed task {task.task_id}")
+                
+            except Exception as e:
+                print(f"✗ Failed task {task.task_id}: {e}")
+                queue.nack(task.task_id)
+        else:
+            # No tasks available, wait
+            time.sleep(1)
+
+# Start multiple workers
+from concurrent.futures import ThreadPoolExecutor
+
+with ThreadPoolExecutor(max_workers=4) as executor:
+    for i in range(4):
+        executor.submit(worker_loop, f"worker-{i}")
+```
+
+### Streaming Top-K Selection
+
+The queue includes a `StreamingTopK` utility for efficient ranking with O(N log K) complexity:
+
+```python
+from sochdb.queue import StreamingTopK
+
+# Create top-K selector (k=10, ascending order, with key function)
+topk = StreamingTopK(k=10, ascending=True, key=lambda x: x[0])
+
+# Process items one at a time
+for score, item in candidates:
+    topk.push((score, item))
+
+# Get sorted top-K results
+results = topk.get_sorted()
+
+# With custom key function
+topk = StreamingTopK(
+    k=5, 
+    ascending=False,  # Descending (highest first)
+    key=lambda x: x['score']
+)
+
+for item in items:
+    topk.push(item)
+
+top_5 = topk.get_sorted()
+```
+
+### Server Mode (gRPC)
+
+```python
+from sochdb import SochDBClient, PriorityQueue
+
+# Connect to server
+client = SochDBClient("localhost:50051")
+
+# Create queue using gRPC backend
+queue = PriorityQueue.from_client(client, "distributed_queue")
+
+# All operations work the same way
+task_id = queue.enqueue(priority=10, payload=b"server task")
+task = queue.dequeue(worker_id="worker-1")
+if task:
+    queue.ack(task.task_id)
+```
+
+### Queue Backend Architecture
+
+```python
+from sochdb.queue import (
+    QueueBackend,
+    FFIQueueBackend,      # For embedded Database
+    GrpcQueueBackend,     # For SochDBClient
+    InMemoryQueueBackend, # For testing
+)
+
+# Use specific backend
+backend = FFIQueueBackend(db)
+queue = PriorityQueue.from_backend(backend, "my_queue")
+
+# Or use factory method (auto-detects)
+queue = create_queue(db, "my_queue")  # Returns FFIQueueBackend
+queue = create_queue(client, "my_queue")  # Returns GrpcQueueBackend
+```
+
+### Task Model
+
+```python
+# Task structure
+class Task:
+    task_id: str           # Unique task identifier
+    priority: int          # Task priority (higher = more important)
+    ready_ts: int          # When task becomes ready (epoch millis)
+    sequence: int          # Sequence number for ordering
+    payload: bytes         # Task data
+    claim_token: Optional[ClaimToken]  # Proof of ownership
+    retry_count: int       # Number of retries
+    status: str           # 'pending', 'claimed', 'completed'
+
+# Claim token (for ack/nack operations)
+class ClaimToken:
+    task_id: str
+    owner: str
+    instance: int
+    created_at: int
+    expires_at: int
+```
+
+### Best Practices
+
+**1. Choose appropriate visibility timeout:**
+```python
+# Short tasks (< 10s)
+config = QueueConfig(visibility_timeout_ms=15000)  # 15s
+
+# Long tasks (minutes)
+config = QueueConfig(visibility_timeout_ms=300000)  # 5 minutes
+```
+
+**2. Handle idempotency:**
+```python
+# Tasks may be redelivered, design for idempotency
+def process_task(payload):
+    task_id = extract_id(payload)
+    
+    # Check if already processed
+    if is_processed(task_id):
+        return  # Skip duplicate
+    
+    # Process and mark as done atomically
+    with db.transaction() as txn:
+        do_work(txn, payload)
+        mark_processed(txn, task_id)
+```
+
+**3. Use dead letter queue:**
+```python
+config = QueueConfig(
+    queue_id="main_queue",
+    max_retries=3,
+    dead_letter_queue="dlq_main",
+)
+
+# Monitor DLQ for failed tasks
+dlq = create_queue(db, "dlq_main")
+failed_tasks = dlq.list_tasks()
+```
+
+**4. Batch operations for efficiency:**
+```python
+# Instead of individual enqueues
+for item in items:
+    queue.enqueue(priority=1, payload=item)
+
+# Use batch enqueue
+tasks = [(1, item) for item in items]
+queue.enqueue_batch(tasks)
+```
+
+### Performance
+
+Based on benchmarks with `InMemoryQueueBackend`:
+
+- **QueueKey encode/decode**: ~411K ops/s
+- **Enqueue**: ~31-83K ops/s (depends on queue size)
+- **Dequeue + Ack**: ~1K ops/s (includes claim protocol)
+- **StreamingTopK (n=10K, k=10)**: ~212 ops/s
+
+### Integration with Existing Features
+
+```python
+# Combine with transactions
+with db.transaction() as txn:
+    # Update database
+    txn.put(b"status:job1", b"queued")
+    
+    # Enqueue task (outside transaction for reliability)
+    queue.enqueue(priority=10, payload=b"job1")
+
+# Combine with monitoring
+from sochdb import TraceStore
+
+trace = TraceStore(db)
+span = trace.start_span("process_queue_task")
+
+task = queue.dequeue("worker-1")
+if task:
+    try:
+        process_task(task.payload)
+        queue.ack(task.task_id)
+        span.add_event("task_completed")
+    finally:
+        span.finish()
+```
+
+---
+
+## 13. Vector Search
 
 Collections store documents with embeddings for semantic search using HNSW.
 
@@ -1239,12 +1571,12 @@ ns = db.namespace("default")
 # With config object
 collection = ns.create_collection(config)
 
-# With parameters (simpler)
-collection = ns.create_collection(
+# With inline config
+collection = ns.create_collection(CollectionConfig(
     name="documents",
     dimension=384,
     metric=DistanceMetric.COSINE
-)
+))
 
 # Get existing collection
 collection = ns.collection("documents")
@@ -1431,7 +1763,7 @@ config = CollectionConfig(
 
 ---
 
-## 12. Hybrid Search (Vector + BM25)
+## 14. Hybrid Search (Vector + BM25)
 
 Combine vector similarity with keyword matching for best results.
 
@@ -1520,7 +1852,7 @@ print(f"Fused results: {results.fused_results}")      # Combined results
 
 ---
 
-## 13. Graph Operations
+## 15. Graph Operations
 
 Build and query knowledge graphs.
 
@@ -1618,7 +1950,7 @@ db.delete_edge("default", "alice", "works_on", "project_old")
 
 ---
 
-## 14. Temporal Graph (Time-Travel)
+## 16. Temporal Graph (Time-Travel)
 
 Track state changes over time with temporal edges.
 
@@ -1679,13 +2011,12 @@ edges = db.query_temporal_graph(
 )
 was_open = any(e["to_id"] == "open" for e in edges)
 
-# All state changes in last hour
+# Query with edge type filter
 edges = db.query_temporal_graph(
     namespace="smart_home",
     node_id="door_front",
-    mode="RANGE",
-    start_time=now - one_hour,
-    end_time=now
+    mode="CURRENT",
+    edge_type="STATE"
 )
 for edge in edges:
     print(f"State: {edge['to_id']} from {edge['valid_from']} to {edge['valid_until']}")
@@ -1706,7 +2037,7 @@ db.end_temporal_edge(
 
 ---
 
-## 15. Semantic Cache
+## 17. Semantic Cache
 
 Cache LLM responses with similarity-based retrieval for cost savings.
 
@@ -1794,96 +2125,343 @@ def get_llm_response(query: str, embed_fn, llm_fn):
 
 ---
 
-## 16. Context Query Builder (LLM Optimization)
+## 18. Memory System
 
-Assemble LLM context with token budgeting and priority-based truncation.
+SochDB provides a complete memory system for AI agents with extraction, consolidation, retrieval, and namespace isolation. All components support both embedded (FFI) and server (gRPC) modes.
 
-### Basic Context Query
+### Features
 
-```python
-from sochdb import ContextQueryBuilder, ContextFormat, TruncationStrategy
+- **Extraction Pipeline**: Compile LLM outputs into typed, validated facts (Entity, Relation, Assertion)
+- **Event-Sourced Consolidation**: Append-only events with derived canonical facts (no destructive updates)
+- **Hybrid Retrieval**: RRF fusion with pre-filtering for multi-tenant safety
+- **Namespace Isolation**: Strong tenant isolation with explicit, auditable cross-namespace grants
 
-# Build context for LLM
-context = ContextQueryBuilder() \
-    .for_session("session_123") \
-    .with_budget(4096) \
-    .format(ContextFormat.TOON) \
-    .literal("SYSTEM", priority=0, text="You are a helpful assistant.") \
-    .section("USER_PROFILE", priority=1) \
-        .get("user.profile.{name, preferences}") \
-        .done() \
-    .section("HISTORY", priority=2) \
-        .last(10, "messages") \
-        .where_eq("session_id", "session_123") \
-        .done() \
-    .section("KNOWLEDGE", priority=3) \
-        .search("documents", "$query_embedding", k=5) \
-        .done() \
-    .execute()
-
-print(f"Token count: {context.token_count}")
-print(f"Context:\n{context.text}")
-```
-
-### Section Types
-
-| Type | Method | Description |
-|------|--------|-------------|
-| `literal` | `.literal(name, priority, text)` | Static text content |
-| `get` | `.get(path)` | Fetch specific data by path |
-| `last` | `.last(n, table)` | Most recent N records from table |
-| `search` | `.search(collection, embedding, k)` | Vector similarity search |
-| `sql` | `.sql(query)` | SQL query results |
-
-### Truncation Strategies
+### Quick Start
 
 ```python
-# Drop from end (keep beginning) - default
-.truncation(TruncationStrategy.TAIL_DROP)
+from sochdb import Database
+from sochdb.memory import (
+    Entity, Relation, Assertion,
+    ExtractionPipeline, Consolidator, HybridRetriever,
+    NamespaceManager, AllowedSet,
+)
 
-# Drop from beginning (keep end)
-.truncation(TruncationStrategy.HEAD_DROP)
+# Open database
+db = Database.open("./memory_db")
 
-# Proportionally truncate across sections
-.truncation(TruncationStrategy.PROPORTIONAL)
+# Create extraction pipeline
+pipeline = ExtractionPipeline.from_database(db, namespace="user_123")
 
-# Fail if budget exceeded
-.truncation(TruncationStrategy.STRICT)
+# Define an LLM extractor (your LLM integration)
+def my_extractor(text):
+    # Call your LLM here and return structured output
+    return {
+        "entities": [
+            {"name": "Alice", "entity_type": "person"},
+            {"name": "Acme Corp", "entity_type": "organization"},
+        ],
+        "relations": [
+            {"from_entity": "Alice", "relation_type": "works_at", "to_entity": "Acme Corp"},
+        ],
+        "assertions": [
+            {"subject": "Alice", "predicate": "role", "object": "Engineer", "confidence": 0.95},
+        ],
+    }
+
+# Extract and commit
+result = pipeline.extract_and_commit("Alice is an engineer at Acme Corp", extractor=my_extractor)
+print(f"Extracted {len(result.entities)} entities, {len(result.relations)} relations")
 ```
 
-### Variables and Bindings
+### Extraction Pipeline
+
+The extraction pipeline compiles LLM outputs into typed, validated facts:
 
 ```python
-from sochdb import ContextValue
+from sochdb.memory import (
+    Entity, Relation, Assertion, ExtractionPipeline, ExtractionSchema
+)
 
-context = ContextQueryBuilder() \
-    .for_session("session_123") \
-    .set_var("query_embedding", ContextValue.Embedding([0.1, 0.2, ...])) \
-    .set_var("user_id", ContextValue.String("user_456")) \
-    .section("KNOWLEDGE", priority=2) \
-        .search("documents", "$query_embedding", k=5) \
-        .done() \
-    .execute()
+# Create with schema validation
+schema = ExtractionSchema(
+    entity_types=["person", "organization", "location"],
+    relation_types=["works_at", "knows", "located_in"],
+    min_confidence=0.5,
+)
+
+pipeline = ExtractionPipeline.from_database(
+    db, 
+    namespace="user_123",
+    schema=schema,
+)
+
+# Extract entities and relations
+result = pipeline.extract(
+    text="John works at Google in Mountain View",
+    extractor=my_llm_extractor,
+)
+
+# Inspect before committing
+for entity in result.entities:
+    print(f"Entity: {entity.name} ({entity.entity_type})")
+
+for relation in result.relations:
+    print(f"Relation: {relation.from_entity} --{relation.relation_type}--> {relation.to_entity}")
+
+# Commit atomically
+pipeline.commit(result)
 ```
 
-### Output Formats
+### Event-Sourced Consolidation
+
+Consolidation maintains append-only events and derives canonical facts without destructive updates:
 
 ```python
-# TOON format (40-60% fewer tokens)
-.format(ContextFormat.TOON)
+from sochdb.memory import Consolidator, RawAssertion, ConsolidationConfig
 
-# JSON format
-.format(ContextFormat.JSON)
+# Create consolidator
+config = ConsolidationConfig(
+    similarity_threshold=0.85,
+    use_temporal_updates=True,
+)
+consolidator = Consolidator.from_database(db, namespace="user_123", config=config)
 
-# Markdown format (human-readable)
-.format(ContextFormat.MARKDOWN)
+# Add assertions (immutable events)
+assertion = RawAssertion(
+    id="",  # Auto-generated
+    fact={"subject": "Alice", "predicate": "lives_in", "object": "SF"},
+    source="conversation_123",
+    confidence=0.9,
+)
+consolidator.add(assertion)
 
-# Plain text
-.format(ContextFormat.TEXT)
+# Handle contradictions (temporal interval update, not deletion)
+new_assertion = RawAssertion(
+    id="",
+    fact={"subject": "Alice", "predicate": "lives_in", "object": "NYC"},
+    source="conversation_456",
+    confidence=0.95,
+)
+consolidator.add_with_contradiction(
+    new_assertion=new_assertion,
+    contradicts=["old_assertion_id"],
+)
+
+# Run consolidation (update canonical view)
+updated_count = consolidator.consolidate()
+
+# Get canonical facts
+facts = consolidator.get_canonical_facts()
+for fact in facts:
+    print(f"Fact: {fact.merged_fact}, confidence: {fact.confidence}")
+
+# Explain provenance
+explanation = consolidator.explain(fact_id="some_fact_id")
+print(f"Evidence: {explanation['evidence_count']} supporting assertions")
 ```
 
+### Hybrid Retrieval with Pre-Filtering
 
-## Session Management (Agent Context)
+Retrieval uses RRF fusion with security-first pre-filtering:
+
+```python
+from sochdb.memory import HybridRetriever, AllowedSet, RetrievalConfig
+
+# Create retriever
+config = RetrievalConfig(
+    k=10,
+    alpha=0.5,  # Balance between vector (1.0) and keyword (0.0)
+    enable_rerank=False,
+)
+retriever = HybridRetriever.from_database(
+    db, 
+    namespace="user_123",
+    collection="documents",
+    config=config,
+)
+
+# Retrieve with namespace isolation (security invariant)
+response = retriever.retrieve(
+    query_text="machine learning papers",
+    query_vector=[0.1, 0.2, ...],  # Your embedding
+    allowed=AllowedSet.from_namespace("user_123"),  # Pre-filter
+    k=10,
+)
+
+for result in response.results:
+    print(f"{result.id}: {result.score:.3f}")
+
+# Explain ranking for debugging
+explanation = retriever.explain(
+    query_text="machine learning",
+    query_vector=[0.1, 0.2, ...],
+    doc_id="some_doc_id",
+)
+print(f"Vector rank: {explanation.get('vector_rank')}")
+print(f"Keyword rank: {explanation.get('keyword_rank')}")
+print(f"Expected RRF score: {explanation.get('expected_rrf_score')}")
+```
+
+### AllowedSet (Pre-Filtering)
+
+`AllowedSet` enforces the security invariant: `Results ⊆ allowed_set`
+
+```python
+from sochdb.memory import AllowedSet
+
+# Allow by explicit IDs
+allowed = AllowedSet.from_ids(["doc1", "doc2", "doc3"])
+
+# Allow by namespace prefix
+allowed = AllowedSet.from_namespace("user_123")
+
+# Allow by custom filter function
+allowed = AllowedSet.from_filter(
+    lambda doc_id, metadata: metadata.get("tenant") == "acme"
+)
+
+# Allow all (trusted context only)
+allowed = AllowedSet.allow_all()
+
+# Check membership
+print(allowed.contains("user_123_doc1"))  # True for namespace filter
+```
+
+### Namespace Isolation
+
+Strong multi-tenant isolation with explicit cross-namespace grants:
+
+```python
+from sochdb.memory import NamespaceManager, NamespacePolicy
+
+# Create namespace manager
+manager = NamespaceManager.from_database(
+    db,
+    policy=NamespacePolicy.STRICT,  # No cross-namespace by default
+)
+
+# Create namespaces
+manager.create("user_alice", metadata={"plan": "pro"})
+manager.create("user_bob", metadata={"plan": "free"})
+
+# Get scoped interface (all operations isolated)
+alice_scope = manager.scope("user_alice")
+
+# Operations are automatically scoped
+response = alice_scope.retrieve(query_text="my documents")
+# Returns ONLY user_alice's documents (guaranteed)
+
+# Cross-namespace access (EXPLICIT policy required)
+manager_explicit = NamespaceManager.from_database(
+    db,
+    policy=NamespacePolicy.EXPLICIT,
+)
+
+grant = manager_explicit.create_grant(
+    from_namespace="user_alice",
+    to_namespace="shared_docs",
+    operations=["retrieve"],
+    expires_in_seconds=3600,
+    reason="Collaboration project",
+)
+
+alice_with_grant = alice_scope.with_grant(grant)
+response = alice_with_grant.retrieve_with_grants(query_text="shared documents")
+```
+
+### gRPC/Server Mode
+
+All memory components work with gRPC client:
+
+```python
+from sochdb import SochDBClient
+from sochdb.memory import (
+    ExtractionPipeline, Consolidator, HybridRetriever, NamespaceManager,
+)
+
+# Connect to server
+client = SochDBClient("localhost:50051")
+
+# Create components with gRPC backend
+pipeline = ExtractionPipeline.from_client(client, namespace="user_123")
+consolidator = Consolidator.from_client(client, namespace="user_123")
+retriever = HybridRetriever.from_client(client, namespace="user_123")
+manager = NamespaceManager.from_client(client)
+
+# Use exactly the same API as embedded mode
+result = pipeline.extract_and_commit(text, extractor=my_extractor)
+```
+
+### In-Memory Backend (Testing)
+
+For testing without persistence:
+
+```python
+from sochdb.memory import (
+    InMemoryBackend, InMemoryConsolidationBackend, 
+    InMemoryRetrievalBackend, InMemoryNamespaceBackend,
+    ExtractionPipeline, Consolidator, HybridRetriever, NamespaceManager,
+)
+
+# Create in-memory backends
+backend = InMemoryBackend()
+pipeline = ExtractionPipeline.from_backend(backend, namespace="test")
+
+# Perfect for unit tests
+result = pipeline.extract(text, extractor=mock_extractor)
+assert len(result.entities) == 2
+```
+
+### Data Models
+
+#### Entity
+
+```python
+from sochdb.memory import Entity
+
+entity = Entity(
+    name="John Doe",
+    entity_type="person",
+    properties={"role": "engineer", "department": "AI"},
+    confidence=0.95,
+    provenance="document_123",
+)
+print(entity.id)  # Deterministic ID from name + type
+```
+
+#### Relation
+
+```python
+from sochdb.memory import Relation
+
+relation = Relation(
+    from_entity="john_entity_id",
+    relation_type="works_at",
+    to_entity="company_entity_id",
+    confidence=0.9,
+)
+```
+
+#### Assertion
+
+```python
+from sochdb.memory import Assertion
+
+assertion = Assertion(
+    subject="john_entity_id",
+    predicate="believes",
+    object="AI will transform healthcare",
+    valid_from=1706000000000,  # Unix ms
+    valid_until=0,  # 0 = still valid
+    confidence=0.85,
+    embedding=[0.1, 0.2, ...],  # Optional
+)
+print(assertion.is_current())  # True if valid now
+```
+
+---
+
+## 19. Session Management
 
 Stateful session management for agentic use cases with permissions, sandboxing, audit logging, and budget tracking.
 
@@ -2308,674 +2886,96 @@ except ContextError as e:
 ```
 ---
 
-## 17. Priority Queue & Task Management
+## 20. Context Query Builder (LLM Optimization)
 
-SochDB provides a first-class priority queue implementation with atomic claim protocol for reliable distributed task processing. The queue supports both embedded (FFI) and server (gRPC) modes.
+Assemble LLM context with token budgeting and priority-based truncation.
 
-### Features
-
-- **Priority-based ordering**: Tasks dequeued by priority, then ready time, then sequence
-- **Atomic claim protocol**: Linearizable claim semantics prevent double-delivery
-- **Visibility timeout**: Automatic retry for failed workers (at-least-once delivery)
-- **Delayed tasks**: Schedule tasks for future execution
-- **Batch operations**: Enqueue multiple tasks atomically
-- **Streaming Top-K**: O(N log K) selection for efficient ranking
-- **Dual-mode support**: Works with embedded Database or gRPC SochDBClient
-
-### Quick Start
+### Basic Context Query
 
 ```python
-from sochdb import Database, PriorityQueue, create_queue
+from sochdb import ContextQueryBuilder, ContextFormat, TruncationStrategy
 
-# Create queue from database
-db = Database.open("./queue_db")
-queue = PriorityQueue.from_database(db, "my_queue")
+# Build context for LLM
+context = ContextQueryBuilder() \
+    .for_session("session_123") \
+    .with_budget(4096) \
+    .format(ContextFormat.TOON) \
+    .literal("SYSTEM", priority=0, text="You are a helpful assistant.") \
+    .section("USER_PROFILE", priority=1) \
+        .get("user.profile.{name, preferences}") \
+        .done() \
+    .section("HISTORY", priority=2) \
+        .last(10, "messages") \
+        .where_eq("session_id", "session_123") \
+        .done() \
+    .section("KNOWLEDGE", priority=3) \
+        .search("documents", "$query_embedding", k=5) \
+        .done() \
+    .execute()
 
-# Or use convenience function (auto-detects backend)
-queue = create_queue(db, "my_queue")
-
-# Enqueue tasks with priority
-task_id1 = queue.enqueue(priority=10, payload=b"high priority task")
-task_id2 = queue.enqueue(priority=1, payload=b"low priority task")
-
-# Dequeue tasks (highest priority first)
-task = queue.dequeue(worker_id="worker-1")
-if task:
-    print(f"Processing: {task.payload}")
-    # Process task...
-    queue.ack(task.task_id)  # Mark as completed
+print(f"Token count: {context.token_count}")
+print(f"Context:\n{context.text}")
 ```
 
-### Enqueue Operations
+### Section Types
+
+| Type | Method | Description |
+|------|--------|-------------|
+| `literal` | `.literal(name, priority, text)` | Static text content |
+| `get` | `.get(path)` | Fetch specific data by path |
+| `last` | `.last(n, table)` | Most recent N records from table |
+| `search` | `.search(collection, embedding, k)` | Vector similarity search |
+| `sql` | `.sql(query)` | SQL query results |
+
+### Truncation Strategies
 
 ```python
-# Simple enqueue with priority
-task_id = queue.enqueue(
-    priority=10,
-    payload=b"task data",
-)
+# Drop from end (keep beginning) - default
+.truncation(TruncationStrategy.TAIL_DROP)
 
-# Delayed task (execute after 60 seconds)
-task_id = queue.enqueue(
-    priority=5,
-    payload=b"delayed task",
-    delay_ms=60000,
-)
+# Drop from beginning (keep end)
+.truncation(TruncationStrategy.HEAD_DROP)
 
-# Batch enqueue (atomic)
-task_ids = queue.enqueue_batch([
-    (10, b"task 1"),
-    (20, b"task 2"),
-    (15, b"task 3"),
-])
+# Proportionally truncate across sections
+.truncation(TruncationStrategy.PROPORTIONAL)
+
+# Fail if budget exceeded
+.truncation(TruncationStrategy.STRICT)
 ```
 
-### Dequeue and Processing
+### Variables and Bindings
 
 ```python
-# Dequeue with automatic visibility timeout
-task = queue.dequeue(worker_id="worker-1")
+from sochdb import ContextValue
 
-if task:
-    try:
-        # Process the task
-        result = process_task(task.payload)
-        
-        # Mark as successfully completed
-        queue.ack(task.task_id)
-        
-    except Exception as e:
-        # Return to queue for retry (optionally change priority)
-        queue.nack(
-            task_id=task.task_id,
-            new_priority=task.priority - 1  # Lower priority on retry
-        )
+context = ContextQueryBuilder() \
+    .for_session("session_123") \
+    .set_var("query_embedding", ContextValue.Embedding([0.1, 0.2, ...])) \
+    .set_var("user_id", ContextValue.String("user_456")) \
+    .section("KNOWLEDGE", priority=2) \
+        .search("documents", "$query_embedding", k=5) \
+        .done() \
+    .execute()
 ```
 
-### Peek and Stats
+### Output Formats
 
 ```python
-# Peek at next task without claiming
-task = queue.peek()
-if task:
-    print(f"Next task: {task.payload}, priority: {task.priority}")
+# TOON format (40-60% fewer tokens)
+.format(ContextFormat.TOON)
 
-# Get queue statistics
-stats = queue.stats()
-print(f"Pending: {stats['pending']}")
-print(f"Claimed: {stats['claimed']}")
-print(f"Total: {stats['total']}")
+# JSON format
+.format(ContextFormat.JSON)
 
-# List all tasks (for monitoring)
-tasks = queue.list_tasks(limit=100)
-for task in tasks:
-    print(f"Task {task.task_id}: priority={task.priority}, status={task.status}")
+# Markdown format (human-readable)
+.format(ContextFormat.MARKDOWN)
+
+# Plain text
+.format(ContextFormat.TEXT)
 ```
 
-### Configuration
 
-```python
-from sochdb import PriorityQueue, QueueConfig
-
-# Custom configuration
-config = QueueConfig(
-    queue_id="my_queue",
-    visibility_timeout_ms=30000,  # 30 seconds
-    max_retries=3,
-    dead_letter_queue="dlq_queue",
-)
-
-queue = PriorityQueue.from_database(db, config=config)
-```
-
-### Worker Pattern
-
-```python
-import time
-
-def worker_loop(worker_id: str):
-    """Simple worker loop."""
-    while True:
-        task = queue.dequeue(worker_id=worker_id)
-        
-        if task:
-            try:
-                # Process task
-                result = process_task(task.payload)
-                queue.ack(task.task_id)
-                print(f"✓ Completed task {task.task_id}")
-                
-            except Exception as e:
-                print(f"✗ Failed task {task.task_id}: {e}")
-                queue.nack(task.task_id)
-        else:
-            # No tasks available, wait
-            time.sleep(1)
-
-# Start multiple workers
-from concurrent.futures import ThreadPoolExecutor
-
-with ThreadPoolExecutor(max_workers=4) as executor:
-    for i in range(4):
-        executor.submit(worker_loop, f"worker-{i}")
-```
-
-### Streaming Top-K Selection
-
-The queue includes a `StreamingTopK` utility for efficient ranking with O(N log K) complexity:
-
-```python
-from sochdb.queue import StreamingTopK
-
-# Create top-K selector (k=10, ascending order)
-topk = StreamingTopK(k=10, ascending=True)
-
-# Process items one at a time
-for score, item in candidates:
-    topk.push(item, key=lambda x: score)
-
-# Get sorted top-K results
-results = topk.get_sorted()
-
-# With custom key function
-topk = StreamingTopK(
-    k=5, 
-    ascending=False,  # Descending (highest first)
-    key=lambda x: x['score']
-)
-
-for item in items:
-    topk.push(item)
-
-top_5 = topk.get_sorted()
-```
-
-### Server Mode (gRPC)
-
-```python
-from sochdb import SochDBClient, PriorityQueue
-
-# Connect to server
-client = SochDBClient("localhost:50051")
-
-# Create queue using gRPC backend
-queue = PriorityQueue.from_client(client, "distributed_queue")
-
-# All operations work the same way
-task_id = queue.enqueue(priority=10, payload=b"server task")
-task = queue.dequeue(worker_id="worker-1")
-if task:
-    queue.ack(task.task_id)
-```
-
-### Queue Backend Architecture
-
-```python
-from sochdb.queue import (
-    QueueBackend,
-    FFIQueueBackend,      # For embedded Database
-    GrpcQueueBackend,     # For SochDBClient
-    InMemoryQueueBackend, # For testing
-)
-
-# Use specific backend
-backend = FFIQueueBackend(db)
-queue = PriorityQueue.from_backend(backend, "my_queue")
-
-# Or use factory method (auto-detects)
-queue = create_queue(db, "my_queue")  # Returns FFIQueueBackend
-queue = create_queue(client, "my_queue")  # Returns GrpcQueueBackend
-```
-
-### Task Model
-
-```python
-# Task structure
-class Task:
-    task_id: str           # Unique task identifier
-    priority: int          # Task priority (higher = more important)
-    ready_ts: int          # When task becomes ready (epoch millis)
-    sequence: int          # Sequence number for ordering
-    payload: bytes         # Task data
-    claim_token: Optional[ClaimToken]  # Proof of ownership
-    retry_count: int       # Number of retries
-    status: str           # 'pending', 'claimed', 'completed'
-
-# Claim token (for ack/nack operations)
-class ClaimToken:
-    task_id: str
-    owner: str
-    instance: int
-    created_at: int
-    expires_at: int
-```
-
-### Best Practices
-
-**1. Choose appropriate visibility timeout:**
-```python
-# Short tasks (< 10s)
-config = QueueConfig(visibility_timeout_ms=15000)  # 15s
-
-# Long tasks (minutes)
-config = QueueConfig(visibility_timeout_ms=300000)  # 5 minutes
-```
-
-**2. Handle idempotency:**
-```python
-# Tasks may be redelivered, design for idempotency
-def process_task(payload):
-    task_id = extract_id(payload)
-    
-    # Check if already processed
-    if is_processed(task_id):
-        return  # Skip duplicate
-    
-    # Process and mark as done atomically
-    with db.transaction() as txn:
-        do_work(txn, payload)
-        mark_processed(txn, task_id)
-```
-
-**3. Use dead letter queue:**
-```python
-config = QueueConfig(
-    queue_id="main_queue",
-    max_retries=3,
-    dead_letter_queue="dlq_main",
-)
-
-# Monitor DLQ for failed tasks
-dlq = create_queue(db, "dlq_main")
-failed_tasks = dlq.list_tasks()
-```
-
-**4. Batch operations for efficiency:**
-```python
-# Instead of individual enqueues
-for item in items:
-    queue.enqueue(priority=1, payload=item)
-
-# Use batch enqueue
-tasks = [(1, item) for item in items]
-queue.enqueue_batch(tasks)
-```
-
-### Performance
-
-Based on benchmarks with `InMemoryQueueBackend`:
-
-- **QueueKey encode/decode**: ~411K ops/s
-- **Enqueue**: ~31-83K ops/s (depends on queue size)
-- **Dequeue + Ack**: ~1K ops/s (includes claim protocol)
-- **StreamingTopK (n=10K, k=10)**: ~212 ops/s
-
-### Integration with Existing Features
-
-```python
-# Combine with transactions
-with db.transaction() as txn:
-    # Update database
-    txn.put(b"status:job1", b"queued")
-    
-    # Enqueue task (outside transaction for reliability)
-    queue.enqueue(priority=10, payload=b"job1")
-
-# Combine with monitoring
-from sochdb import TraceStore
-
-trace = TraceStore(db)
-span = trace.start_span("process_queue_task")
-
-task = queue.dequeue("worker-1")
-if task:
-    try:
-        process_task(task.payload)
-        queue.ack(task.task_id)
-        span.add_event("task_completed")
-    finally:
-        span.finish()
-```
-
----
-
-## 18. Memory System (LLM-Native)
-
-SochDB provides a complete memory system for AI agents with extraction, consolidation, retrieval, and namespace isolation. All components support both embedded (FFI) and server (gRPC) modes.
-
-### Features
-
-- **Extraction Pipeline**: Compile LLM outputs into typed, validated facts (Entity, Relation, Assertion)
-- **Event-Sourced Consolidation**: Append-only events with derived canonical facts (no destructive updates)
-- **Hybrid Retrieval**: RRF fusion with pre-filtering for multi-tenant safety
-- **Namespace Isolation**: Strong tenant isolation with explicit, auditable cross-namespace grants
-
-### Quick Start
-
-```python
-from sochdb import Database
-from sochdb.memory import (
-    Entity, Relation, Assertion,
-    ExtractionPipeline, Consolidator, HybridRetriever,
-    NamespaceManager, AllowedSet,
-)
-
-# Open database
-db = Database.open("./memory_db")
-
-# Create extraction pipeline
-pipeline = ExtractionPipeline.from_database(db, namespace="user_123")
-
-# Define an LLM extractor (your LLM integration)
-def my_extractor(text):
-    # Call your LLM here and return structured output
-    return {
-        "entities": [
-            {"name": "Alice", "entity_type": "person"},
-            {"name": "Acme Corp", "entity_type": "organization"},
-        ],
-        "relations": [
-            {"from_entity": "Alice", "relation_type": "works_at", "to_entity": "Acme Corp"},
-        ],
-        "assertions": [
-            {"subject": "Alice", "predicate": "role", "object": "Engineer", "confidence": 0.95},
-        ],
-    }
-
-# Extract and commit
-result = pipeline.extract_and_commit("Alice is an engineer at Acme Corp", extractor=my_extractor)
-print(f"Extracted {len(result.entities)} entities, {len(result.relations)} relations")
-```
-
-### Extraction Pipeline
-
-The extraction pipeline compiles LLM outputs into typed, validated facts:
-
-```python
-from sochdb.memory import (
-    Entity, Relation, Assertion, ExtractionPipeline, ExtractionSchema
-)
-
-# Create with schema validation
-schema = ExtractionSchema(
-    entity_types=["person", "organization", "location"],
-    relation_types=["works_at", "knows", "located_in"],
-    min_confidence=0.5,
-)
-
-pipeline = ExtractionPipeline.from_database(
-    db, 
-    namespace="user_123",
-    schema=schema,
-)
-
-# Extract entities and relations
-result = pipeline.extract(
-    text="John works at Google in Mountain View",
-    extractor=my_llm_extractor,
-)
-
-# Inspect before committing
-for entity in result.entities:
-    print(f"Entity: {entity.name} ({entity.entity_type})")
-
-for relation in result.relations:
-    print(f"Relation: {relation.from_entity} --{relation.relation_type}--> {relation.to_entity}")
-
-# Commit atomically
-pipeline.commit(result)
-```
-
-### Event-Sourced Consolidation
-
-Consolidation maintains append-only events and derives canonical facts without destructive updates:
-
-```python
-from sochdb.memory import Consolidator, RawAssertion, ConsolidationConfig
-
-# Create consolidator
-config = ConsolidationConfig(
-    similarity_threshold=0.85,
-    use_temporal_updates=True,
-)
-consolidator = Consolidator.from_database(db, namespace="user_123", config=config)
-
-# Add assertions (immutable events)
-assertion = RawAssertion(
-    id="",  # Auto-generated
-    fact={"subject": "Alice", "predicate": "lives_in", "object": "SF"},
-    source="conversation_123",
-    confidence=0.9,
-)
-consolidator.add(assertion)
-
-# Handle contradictions (temporal interval update, not deletion)
-new_assertion = RawAssertion(
-    id="",
-    fact={"subject": "Alice", "predicate": "lives_in", "object": "NYC"},
-    source="conversation_456",
-    confidence=0.95,
-)
-consolidator.add_with_contradiction(
-    new_assertion=new_assertion,
-    contradicts=["old_assertion_id"],
-)
-
-# Run consolidation (update canonical view)
-updated_count = consolidator.consolidate()
-
-# Get canonical facts
-facts = consolidator.get_canonical_facts()
-for fact in facts:
-    print(f"Fact: {fact.merged_fact}, confidence: {fact.confidence}")
-
-# Explain provenance
-explanation = consolidator.explain(fact_id="some_fact_id")
-print(f"Evidence: {explanation['evidence_count']} supporting assertions")
-```
-
-### Hybrid Retrieval with Pre-Filtering
-
-Retrieval uses RRF fusion with security-first pre-filtering:
-
-```python
-from sochdb.memory import HybridRetriever, AllowedSet, RetrievalConfig
-
-# Create retriever
-config = RetrievalConfig(
-    k=10,
-    alpha=0.5,  # Balance between vector (1.0) and keyword (0.0)
-    enable_rerank=False,
-)
-retriever = HybridRetriever.from_database(
-    db, 
-    namespace="user_123",
-    collection="documents",
-    config=config,
-)
-
-# Retrieve with namespace isolation (security invariant)
-response = retriever.retrieve(
-    query_text="machine learning papers",
-    query_vector=[0.1, 0.2, ...],  # Your embedding
-    allowed=AllowedSet.from_namespace("user_123"),  # Pre-filter
-    k=10,
-)
-
-for result in response.results:
-    print(f"{result.id}: {result.score:.3f}")
-
-# Explain ranking for debugging
-explanation = retriever.explain(
-    query_text="machine learning",
-    query_vector=[0.1, 0.2, ...],
-    doc_id="some_doc_id",
-)
-print(f"Vector rank: {explanation.get('vector_rank')}")
-print(f"Keyword rank: {explanation.get('keyword_rank')}")
-print(f"Expected RRF score: {explanation.get('expected_rrf_score')}")
-```
-
-### AllowedSet (Pre-Filtering)
-
-`AllowedSet` enforces the security invariant: `Results ⊆ allowed_set`
-
-```python
-from sochdb.memory import AllowedSet
-
-# Allow by explicit IDs
-allowed = AllowedSet.from_ids(["doc1", "doc2", "doc3"])
-
-# Allow by namespace prefix
-allowed = AllowedSet.from_namespace("user_123")
-
-# Allow by custom filter function
-allowed = AllowedSet.from_filter(
-    lambda doc_id, metadata: metadata.get("tenant") == "acme"
-)
-
-# Allow all (trusted context only)
-allowed = AllowedSet.allow_all()
-
-# Check membership
-print(allowed.contains("user_123_doc1"))  # True for namespace filter
-```
-
-### Namespace Isolation
-
-Strong multi-tenant isolation with explicit cross-namespace grants:
-
-```python
-from sochdb.memory import NamespaceManager, NamespacePolicy
-
-# Create namespace manager
-manager = NamespaceManager.from_database(
-    db,
-    policy=NamespacePolicy.STRICT,  # No cross-namespace by default
-)
-
-# Create namespaces
-manager.create("user_alice", metadata={"plan": "pro"})
-manager.create("user_bob", metadata={"plan": "free"})
-
-# Get scoped interface (all operations isolated)
-alice_scope = manager.scope("user_alice")
-
-# Operations are automatically scoped
-response = alice_scope.retrieve(query_text="my documents")
-# Returns ONLY user_alice's documents (guaranteed)
-
-# Cross-namespace access (EXPLICIT policy required)
-manager_explicit = NamespaceManager.from_database(
-    db,
-    policy=NamespacePolicy.EXPLICIT,
-)
-
-grant = manager_explicit.create_grant(
-    from_namespace="user_alice",
-    to_namespace="shared_docs",
-    operations=["retrieve"],
-    expires_in_seconds=3600,
-    reason="Collaboration project",
-)
-
-alice_with_grant = alice_scope.with_grant(grant)
-response = alice_with_grant.retrieve_with_grants(query_text="shared documents")
-```
-
-### gRPC/Server Mode
-
-All memory components work with gRPC client:
-
-```python
-from sochdb import SochDBClient
-from sochdb.memory import (
-    ExtractionPipeline, Consolidator, HybridRetriever, NamespaceManager,
-)
-
-# Connect to server
-client = SochDBClient("localhost:50051")
-
-# Create components with gRPC backend
-pipeline = ExtractionPipeline.from_client(client, namespace="user_123")
-consolidator = Consolidator.from_client(client, namespace="user_123")
-retriever = HybridRetriever.from_client(client, namespace="user_123")
-manager = NamespaceManager.from_client(client)
-
-# Use exactly the same API as embedded mode
-result = pipeline.extract_and_commit(text, extractor=my_extractor)
-```
-
-### In-Memory Backend (Testing)
-
-For testing without persistence:
-
-```python
-from sochdb.memory import (
-    InMemoryBackend, InMemoryConsolidationBackend, 
-    InMemoryRetrievalBackend, InMemoryNamespaceBackend,
-    ExtractionPipeline, Consolidator, HybridRetriever, NamespaceManager,
-)
-
-# Create in-memory backends
-backend = InMemoryBackend()
-pipeline = ExtractionPipeline.from_backend(backend, namespace="test")
-
-# Perfect for unit tests
-result = pipeline.extract(text, extractor=mock_extractor)
-assert len(result.entities) == 2
-```
-
-### Data Models
-
-#### Entity
-
-```python
-from sochdb.memory import Entity
-
-entity = Entity(
-    name="John Doe",
-    entity_type="person",
-    properties={"role": "engineer", "department": "AI"},
-    confidence=0.95,
-    provenance="document_123",
-)
-print(entity.id)  # Deterministic ID from name + type
-```
-
-#### Relation
-
-```python
-from sochdb.memory import Relation
-
-relation = Relation(
-    from_entity="john_entity_id",
-    relation_type="works_at",
-    to_entity="company_entity_id",
-    confidence=0.9,
-)
-```
-
-#### Assertion
-
-```python
-from sochdb.memory import Assertion
-
-assertion = Assertion(
-    subject="john_entity_id",
-    predicate="believes",
-    object="AI will transform healthcare",
-    valid_from=1706000000000,  # Unix ms
-    valid_until=0,  # 0 = still valid
-    confidence=0.85,
-    embedding=[0.1, 0.2, ...],  # Optional
-)
-print(assertion.is_current())  # True if valid now
-```
-
----
-
-## 19. Atomic Multi-Index Writes
+## 21. Atomic Multi-Index Writes
 
 Ensure consistency across KV storage, vectors, and graphs with atomic operations.
 
@@ -3048,7 +3048,7 @@ print(f"Status: {result.status}")  # "committed"
 
 ---
 
-## 20. Recovery & WAL Management
+## 22. Recovery & WAL Management
 
 SochDB uses Write-Ahead Logging (WAL) for durability with automatic recovery.
 
@@ -3127,7 +3127,7 @@ db = open_with_recovery("./my_database")
 
 ---
 
-## 21. Checkpoints & Snapshots
+## 23. Checkpoints & Snapshots
 
 ### Application Checkpoints
 
@@ -3201,7 +3201,7 @@ db.put(b"key1", b"new_value")  # Snapshot doesn't see this
 
 ---
 
-## 22. Compression & Storage
+## 24. Compression & Storage
 
 ### Compression Settings
 
@@ -3256,7 +3256,7 @@ print(f"Running compactions: {stats.running_compactions}")
 
 ---
 
-## 23. Statistics & Monitoring
+## 25. Statistics & Monitoring
 
 ### Database Statistics
 
@@ -3307,7 +3307,7 @@ print(f"Writes/sec: {metrics.writes_per_second}")
 
 ---
 
-## 24. Distributed Tracing
+## 26. Distributed Tracing
 
 Track operations for debugging and performance analysis.
 
@@ -3385,7 +3385,7 @@ traces.log_llm_call(
 
 ---
 
-## 25. Workflow & Run Tracking
+## 27. Workflow & Run Tracking
 
 Track long-running workflows with events and state.
 
@@ -3455,7 +3455,7 @@ workflow_svc.update_run_status("run_123", RunStatus.FAILED)
 
 ---
 
-## 26. Server Mode (gRPC Client)
+## 28. Server Mode (gRPC Client)
 
 Full-featured client for distributed deployments.
 
@@ -3531,13 +3531,16 @@ for result in results:
 ### Collection Operations (Server Mode)
 
 ```python
-# Create collection
+# Create collection (server mode)
 client.create_collection(
     name="documents",
     dimension=384,
     namespace="default",
     metric="cosine"
 )
+
+# Note: In embedded mode, use CollectionConfig:
+# ns.create_collection(CollectionConfig(name=..., dimension=..., metric=...))
 
 # Add documents
 client.add_documents(
@@ -3583,7 +3586,7 @@ print(f"Tokens used: {context.token_count}")
 
 ---
 
-## 27. IPC Client (Unix Sockets)
+## 29. IPC Client (Unix Sockets)
 
 Local server communication via Unix sockets (lower latency than gRPC).
 
@@ -3624,7 +3627,7 @@ client.close()
 
 ---
 
-## 28. Standalone VectorIndex
+## 30. Standalone VectorIndex
 
 Direct HNSW index operations without collections.
 
@@ -3665,9 +3668,8 @@ for id, distance in results:
 print(f"Size: {len(index)}")
 print(f"Dimension: {index.dimension}")
 
-# Save/load
-index.save("./index.bin")
-index = VectorIndex.load("./index.bin")
+# Note: For persistence, use BatchAccumulator.save()/load()
+# to save accumulated vectors to disk as numpy files
 ```
 
 ### BatchAccumulator — Deferred High-Throughput Insertion
@@ -3751,45 +3753,37 @@ inserted = acc2.flush()                 # single bulk HNSW build
 
 ---
 
-## 29. Vector Utilities
+## 31. Vector Utilities
 
-Standalone vector operations for preprocessing and analysis.
+The `sochdb.vector` module provides `VectorIndex`, `BatchAccumulator`, and
+profiling helpers for HNSW operations.
 
 ```python
-from sochdb import vector
+from sochdb import vector, VectorIndex
+import numpy as np
 
-# Distance calculations
-a = [1.0, 0.0, 0.0]
-b = [0.707, 0.707, 0.0]
+# Profiling helpers
+vector.enable_profiling()   # Start collecting timing data
+vector.disable_profiling()  # Stop collecting
+vector.dump_profiling()     # Print profiling results
 
-cosine_dist = vector.cosine_distance(a, b)
-euclidean_dist = vector.euclidean_distance(a, b)
-dot_product = vector.dot_product(a, b)
+# VectorIndex and BatchAccumulator are the primary vector utilities
+# (see Section 28 for full usage)
+index = VectorIndex(dimension=128, max_connections=16, ef_construction=200)
 
-print(f"Cosine distance: {cosine_dist:.4f}")
-print(f"Euclidean distance: {euclidean_dist:.4f}")
-print(f"Dot product: {dot_product:.4f}")
+# For distance calculations, use numpy directly:
+a = np.array([1.0, 0.0, 0.0])
+b = np.array([0.707, 0.707, 0.0])
 
-# Normalize a vector
-v = [3.0, 4.0]
-normalized = vector.normalize(v)
-print(f"Normalized: {normalized}")  # [0.6, 0.8]
-
-# Batch normalize
-vectors = [[3.0, 4.0], [1.0, 0.0]]
-normalized_batch = vector.normalize_batch(vectors)
-
-# Compute centroid
-vectors = [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]
-centroid = vector.centroid(vectors)
-
-# Cosine similarity (1 - distance)
-similarity = vector.cosine_similarity(a, b)
+cosine_sim = np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
+euclidean_dist = np.linalg.norm(a - b)
+dot_product = np.dot(a, b)
+normalized = a / np.linalg.norm(a)
 ```
 
 ---
 
-## 30. Data Formats (TOON/JSON/Columnar)
+## 32. Data Formats (TOON/JSON/Columnar)
 
 ### Wire Formats
 
@@ -3804,10 +3798,10 @@ WireFormat.COLUMNAR  # Raw columnar for analytics
 # Parse from string
 fmt = WireFormat.from_string("toon")
 
-# Convert between formats
-data = {"users": [{"id": 1, "name": "Alice"}]}
-toon_data = WireFormat.to_toon(data)
-json_data = WireFormat.to_json(data)
+# Convert data using Database format methods
+records = [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]
+toon_data = db.to_toon("users", records)   # TOON format string
+json_data = db.to_json("users", records)   # JSON format string
 ```
 
 ### TOON Format Benefits
@@ -3847,7 +3841,7 @@ if FormatCapabilities.supports_round_trip(WireFormat.TOON):
 
 ---
 
-## 31. Policy Service
+## 33. Policy Service
 
 Register and evaluate access control policies.
 
@@ -3898,7 +3892,7 @@ policy_svc.delete("old_policy")
 
 ---
 
-## 32. MCP (Model Context Protocol)
+## 34. MCP (Model Context Protocol)
 
 Integrate SochDB as an MCP tool provider.
 
@@ -3952,7 +3946,7 @@ client.register_mcp_tool(
 
 ---
 
-## 33. Configuration Reference
+## 35. Configuration Reference
 
 ### Database Configuration
 
@@ -4013,7 +4007,7 @@ db = Database.open("./my_db", config={
 
 ---
 
-## 34. Error Handling
+## 36. Error Handling
 
 ### Error Types
 
@@ -4106,7 +4100,7 @@ except SochDBError as e:
 
 ---
 
-## 35. Async Support
+## 37. Async Support
 
 Optional async/await support for non-blocking operations.
 
@@ -4143,7 +4137,13 @@ asyncio.run(main())
 
 ---
 
-## 36. Building & Development
+## 38. Building & Development
+
+### Prerequisites
+
+- **Rust toolchain** (1.70+): [rustup.rs](https://rustup.rs)
+- **Python** 3.9+
+- The Rust workspace at `../sochdb/` must be present (the build script compiles `sochdb-storage` and `sochdb-index` crates)
 
 ### Building Native Extensions
 
@@ -4211,7 +4211,7 @@ sochdb/
 
 ---
 
-## 37. Complete Examples
+## 39. Complete Examples
 
 ### RAG Pipeline Example
 
@@ -4352,10 +4352,10 @@ for tenant in ["acme_corp", "globex", "initech"]:
     )
     
     # Create tenant-specific collections
-    ns.create_collection(
+    ns.create_collection(CollectionConfig(
         name="documents",
         dimension=384
-    )
+    ))
 
 # Tenant-scoped operations
 with db.use_namespace("acme_corp") as ns:
@@ -4380,7 +4380,7 @@ db.close()
 
 ---
 
-## 38. Migration Guide
+## 40. Migration Guide
 
 ### From v0.2.x to v0.3.x
 
