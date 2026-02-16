@@ -1,7 +1,5 @@
 # SochDB Python SDK
 
-> **📢 Note:** This project has been renamed from **ToonDB** to **SochDB**. All references, packages, and APIs have been updated accordingly. If you're upgrading from ToonDB, please update your imports from `toondb` to `sochdb`.
-
 **Dual-mode architecture: Embedded (FFI) + Server (gRPC/IPC)**  
 Choose the deployment mode that fits your needs.
 
