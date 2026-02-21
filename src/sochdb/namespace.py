@@ -507,9 +507,12 @@ class Collection:
     ) -> None:
         """
         Insert a single vector.
-        
-        Uses native Rust FFI for persistence and HNSW indexing.
-        
+
+        Writes to BOTH the in-memory HNSW index (for fast vector_search /
+        vector_search_exact) AND the KV store (for keyword_search / hybrid_search
+        BM25 fallback).  Previously only the HNSW path was populated, making
+        documents inserted with insert() invisible to keyword/hybrid search.
+
         Args:
             id: Unique document ID
             vector: Vector embedding
@@ -519,22 +522,35 @@ class Collection:
         # Auto-dimension from first vector
         if self._config.dimension is None:
             object.__setattr__(self._config, 'dimension', len(vector))
-        
+
         # Validate dimension
         if len(vector) != self._config.dimension:
             raise DimensionMismatchError(self._config.dimension, len(vector))
-        
+
         # Build metadata dict
         meta = metadata.copy() if metadata else {}
         if content:
             meta["_content"] = content
-        
-        # 1. Insert into in-memory HNSW (fast, used for same-session search)
+
+        # 1. Insert into in-memory HNSW (fast, used for same-session vector search)
         self._ensure_index(self._config.dimension)
         internal_id = self._get_internal_id(id)
         self._vector_index.insert(internal_id, vector)
         self._metadata_store[id] = meta
         self._raw_vectors[id] = vector  # keep for snapshot
+
+        # 2. Persist to KV store so keyword_search / hybrid_search find this doc.
+        #    Uses the same JSON schema as insert_multi() so FFI BM25 and the
+        #    Python scan fallback can both read it.
+        with self._db.transaction() as txn:
+            doc_data = {
+                "id": str(id),
+                "vector": vector,
+                "metadata": meta,
+                "content": content or meta.get("_content", ""),
+                "is_multi_vector": False,
+            }
+            txn.put(self._vector_key(id), json.dumps(doc_data).encode())
     
     def insert_batch(
         self,
@@ -546,63 +562,76 @@ class Collection:
     ) -> int:
         """
         Insert multiple vectors in a batch.
-        
-        Uses native Rust FFI for durable persistence and HNSW indexing.
-        
+
+        Writes to BOTH in-memory HNSW (for fast vector search) AND KV store
+        (for keyword/hybrid search BM25).  Previously only the HNSW path was
+        populated, leaving batch-inserted docs invisible to keyword search.
+
         Supports two calling conventions:
         1. Tuple format: insert_batch([(id, vector, metadata, content), ...])
         2. Keyword format: insert_batch(ids=[...], vectors=[...], metadatas=[...])
-        
+
         Args:
             documents: List of (id, vector, metadata, content) tuples
             ids: List of document IDs (keyword format)
             vectors: List of vector embeddings (keyword format)
             metadatas: List of metadata dicts (keyword format)
-            
+
         Returns:
             Number of documents inserted
         """
         import numpy as np
-        
+
         # Handle keyword argument format
         if ids is not None and vectors is not None:
             if metadatas is None:
                 metadatas = [None] * len(ids)
             documents = [(id, vec, meta, None) for id, vec, meta in zip(ids, vectors, metadatas)]
-        
+
         if not documents:
             return 0
-        
+
         # Auto-dimension inference from first vector
         first_vec = documents[0][1]
         if self._config.dimension is None:
             object.__setattr__(self._config, 'dimension', len(first_vec))
-        
+
         # Validate dimensions
         for doc_id, vector, metadata, content in documents:
             if len(vector) != self._config.dimension:
                 raise DimensionMismatchError(self._config.dimension, len(vector))
-        
-        # Build ID and metadata lists for FFI batch insert
-        batch_ids = [str(doc[0]) for doc in documents]
-        batch_vectors = [doc[1] for doc in documents]
+
+        # Build per-document metadata
         batch_metadatas = []
         for doc_id, vector, metadata, content in documents:
             meta = metadata.copy() if metadata else {}
             if content:
                 meta["_content"] = content
-            batch_metadatas.append(meta if meta else None)
-        
-        # 1. Fast in-memory HNSW insert (used for same-session search)
+            batch_metadatas.append(meta)
+
+        # 1. Fast in-memory HNSW insert (used for same-session vector search)
         self._ensure_index(self._config.dimension)
         internal_ids = np.array([self._get_internal_id(doc[0]) for doc in documents], dtype=np.uint64)
         vectors_array = np.array([doc[1] for doc in documents], dtype=np.float32)
         count = self._vector_index.insert_batch(internal_ids, vectors_array)
         for i, (doc_id, vector, metadata, content) in enumerate(documents):
-            meta = batch_metadatas[i] if batch_metadatas[i] else {}
-            self._metadata_store[doc_id] = meta
-            self._raw_vectors[doc_id] = batch_vectors[i]  # keep for snapshot
-        
+            self._metadata_store[doc_id] = batch_metadatas[i]
+            self._raw_vectors[doc_id] = vector  # keep for snapshot
+
+        # 2. Persist to KV store so keyword_search / hybrid_search find all docs.
+        #    Written in one transaction for atomicity.
+        with self._db.transaction() as txn:
+            for i, (doc_id, vector, metadata, content) in enumerate(documents):
+                meta = batch_metadatas[i]
+                doc_data = {
+                    "id": str(doc_id),
+                    "vector": vector,
+                    "metadata": meta,
+                    "content": content or meta.get("_content", ""),
+                    "is_multi_vector": False,
+                }
+                txn.put(self._vector_key(doc_id), json.dumps(doc_data).encode())
+
         return count
     
     def add(
@@ -1115,51 +1144,90 @@ class Collection:
                 vector_results=0,
             )
 
-        # Fallback: Python scan
+        # Fallback: Python BM25 scan over KV store
+        # Uses proper BM25 formula (k1=1.2, b=0.75) instead of raw TF counting.
+        # Previously this used simple count(term in doc) with no IDF weighting,
+        # which caused popular terms to dominate and domain-specific terms to rank low.
         all_docs = []
         prefix = self._vectors_prefix()
         with self._db.transaction() as txn:
             for key, value in txn.scan_prefix(prefix):
                 doc = json.loads(value.decode())
                 all_docs.append(doc)
-        
-        # Simple keyword matching on content and metadata
-        query_lower = request.text_query.lower()
-        query_terms = query_lower.split()
-        
-        scored_docs = []
+
+        if not all_docs:
+            query_time_ms = (time.time() - start_time) * 1000
+            return SearchResults(results=[], total_count=0, query_time_ms=query_time_ms)
+
+        # Tokenise query (stopword-filtered list already computed above)
+        query_terms = [w for w in cleaned_query.split() if w]
+        if not query_terms:
+            query_terms = request.text_query.lower().split()
+
+        # --- BM25 parameters (Lucene / Elasticsearch defaults) ---
+        K1   = 1.2  # term-frequency saturation
+        B    = 0.75 # length normalisation
+
+        # Build corpus for IDF: token → document-frequency count
+        import math
+        corpus_texts = []
         for doc in all_docs:
-            # Search in content field
-            content = doc.get("content", "") or ""
+            content  = doc.get("content", "") or ""
             metadata = doc.get("metadata", {})
-            
-            # Also search in metadata text fields
             text_fields = [content]
             for v in metadata.values():
                 if isinstance(v, str):
                     text_fields.append(v)
-            
-            combined_text = " ".join(text_fields).lower()
-            
-            # Simple term frequency scoring
+            corpus_texts.append(" ".join(text_fields).lower())
+
+        N      = len(all_docs)
+        avgdl  = sum(len(t.split()) for t in corpus_texts) / N if N else 1.0
+
+        # Document-frequency per query term
+        df: dict = {}
+        for term in query_terms:
+            for text in corpus_texts:
+                if term in text.split():
+                    df[term] = df.get(term, 0) + 1
+
+        # IDF (Robertson-Spärck Jones formula, +1 to keep non-negative)
+        idf: dict = {
+            term: math.log((N - df.get(term, 0) + 0.5) / (df.get(term, 0) + 0.5) + 1)
+            for term in query_terms
+        }
+
+        scored_docs = []
+        for doc, text in zip(all_docs, corpus_texts):
+            tokens   = text.split()
+            dl       = len(tokens)
+            metadata = doc.get("metadata", {})
+
+            # Build TF map
+            tf_map: dict = {}
+            for tok in tokens:
+                tf_map[tok] = tf_map.get(tok, 0) + 1
+
+            # BM25 score
             score = 0.0
             for term in query_terms:
-                if term in combined_text:
-                    score += combined_text.count(term)
-            
+                tf = tf_map.get(term, 0)
+                if tf == 0:
+                    continue
+                numerator   = tf * (K1 + 1)
+                denominator = tf + K1 * (1 - B + B * dl / avgdl)
+                score += idf[term] * numerator / denominator
+
             if score > 0:
-                # Apply metadata filter
-                if request.filter:
-                    if not self._matches_filter(metadata, request.filter):
-                        continue
+                if request.filter and not self._matches_filter(metadata, request.filter):
+                    continue
                 scored_docs.append((score, doc))
-        
-        # Sort by score descending
+
+        # Sort by BM25 score descending
         scored_docs.sort(key=lambda x: x[0], reverse=True)
-        
+
         # Take top k
         top_k = scored_docs[:request.k]
-        
+
         # Build results
         results = []
         for score, doc in top_k:
@@ -1170,9 +1238,9 @@ class Collection:
                 vector=doc.get("vector") if request.include_vectors else None,
             )
             results.append(result)
-        
+
         query_time_ms = (time.time() - start_time) * 1000
-        
+
         return SearchResults(
             results=results,
             total_count=len(scored_docs),

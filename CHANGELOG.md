@@ -5,6 +5,27 @@ All notable changes to the SochDB Python SDK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.5] - 2026-02-21
+
+### Fixed
+
+- **`insert()` now writes to KV store** — previously `insert()` only populated
+  the in-memory HNSW index, leaving single-vector inserts invisible to
+  `keyword_search()`, `hybrid_search()`, and the FFI BM25 path.  Docs are now
+  persisted to the KV store using the same JSON schema as `insert_multi()`.
+
+- **`insert_batch()` now writes to KV store** — same issue as `insert()`.
+  Batch-inserted documents were not written to KV, so any follow-up keyword or
+  hybrid search would miss them.  All docs in a batch are now written in a
+  single atomic transaction.
+
+- **Python BM25 fallback now uses proper BM25 formula** — the fallback
+  `_keyword_search()` (used when the native FFI call returns `None`) previously
+  scored documents by raw term-frequency count with no IDF weighting and no
+  length normalisation.  It now implements the Robertson–Spärck Jones BM25
+  formula (k1=1.2, b=0.75 — Lucene / Elasticsearch defaults), matching the
+  behaviour of the native Rust `bm25.rs` implementation.
+
 ## [0.5.4] - 2026-02-15
 
 ### Changed
