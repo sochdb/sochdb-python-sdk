@@ -40,6 +40,7 @@
 # Platforms supported:
 #   - Linux x86_64 (manylinux_2_17)
 #   - macOS ARM64 (Apple Silicon)
+#   - macOS x86_64 (Intel)
 #   - Windows x64
 #
 # Python versions supported: 3.9, 3.10, 3.11, 3.12, 3.13
@@ -98,6 +99,11 @@ jobs:
           - os: macos-latest
             target: aarch64-apple-darwin
             wheel_platform: macosx_11_0_arm64
+            archive_ext: tar.gz
+
+          - os: macos-13
+            target: x86_64-apple-darwin
+            wheel_platform: macosx_10_15_x86_64
             archive_ext: tar.gz
             
           - os: windows-latest
@@ -403,6 +409,7 @@ jobs:
           
           - ✅ **Linux x86_64** (manylinux_2_17_x86_64)
           - ✅ **macOS ARM64** (Apple Silicon, macosx_11_0_arm64)
+          - ✅ **macOS x86_64** (Intel, macosx_10_15_x86_64)
           - ✅ **Windows x64** (win_amd64)
           
           ### Python Version Support
@@ -422,7 +429,7 @@ jobs:
           
           ### Source Distribution
           
-          The source distribution (`.tar.gz`) is also available for custom builds, though binaries are not included and would need to be obtained separately from the main SochDB repository.
+          The source distribution (`.tar.gz`) is attached to the GitHub release for maintainers and custom builds, but it is intentionally not uploaded to PyPI while unsupported platform combinations can still fall back to a broken binary mix.
           
           ---
           
@@ -475,12 +482,13 @@ jobs:
           path: dist/
           merge-multiple: true
 
-      - name: List packages
+      - name: Remove source distribution from PyPI payload
         run: |
-          echo "=== Packages to upload ==="
+          rm -f dist/*.tar.gz
+          echo "=== Wheels to upload to PyPI ==="
           ls -la dist/
           if [ -z "$(ls -A dist/)" ]; then
-            echo "ERROR: No Python packages found!"
+            echo "ERROR: No wheel packages found!"
             exit 1
           fi
 

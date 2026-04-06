@@ -248,7 +248,9 @@ services:
 
 **Operating Systems:**
 - ✅ Linux (Ubuntu 20.04+, RHEL 8+)
-- ✅ macOS (10.15+, both Intel and Apple Silicon)
+- ✅ macOS (10.15+, Apple Silicon arm64 packaged path)
+- ✅ macOS Intel (10.15+, x86_64 packaged wheel path)
+- ⚠️  Apple Silicon users should still prefer a native arm64 Python env over Rosetta
 - ⚠️  Windows (requires native builds)
 
 **File Descriptors:**
@@ -286,7 +288,7 @@ db = Database.open_concurrent("./data.db")
 OSError: libsochdb_storage.dylib not found
 ```
 
-**macOS**:
+**macOS (if you are not on the supported packaged arm64 path)**:
 ```bash
 # Build and install library
 cd /path/to/sochdb
@@ -460,7 +462,9 @@ pip install sochdb
 | Platform | Architecture | Status |
 |----------|--------------|--------|
 | Linux | x86_64, aarch64 | ✅ Full support |
-| macOS | x86_64, arm64 | ✅ Full support |
+| macOS | arm64 | ✅ Packaged wheel support |
+| macOS Intel | x86_64 | ✅ Packaged wheel support |
+| Apple Silicon via Rosetta | x86_64 | ⚠️ Prefer native arm64 Python first |
 | Windows | x86_64 | ✅ Full support |
 
 **Optional Dependencies:**
