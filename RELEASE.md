@@ -26,7 +26,10 @@ Each platform-specific wheel contains:
 The workflow builds wheels for:
 - **Linux x86_64** (`manylinux_2_17_x86_64`)
 - **macOS ARM64** (`macosx_11_0_arm64`) - Apple Silicon
+- **macOS x86_64** (`macosx_10_15_x86_64`) - Intel
 - **Windows x64** (`win_amd64`)
+
+Unsupported platforms should not fall back to a PyPI source distribution, because that can produce a misleading install with the wrong bundled native binaries.
 
 ### 4. Python Version Support
 Wheels are compatible with:
@@ -43,6 +46,7 @@ Wheels are compatible with:
 2. The release must have platform-specific archives:
    - `sochdb-{version}-x86_64-unknown-linux-gnu.tar.gz`
    - `sochdb-{version}-aarch64-apple-darwin.tar.gz`
+   - `sochdb-{version}-x86_64-apple-darwin.tar.gz`
    - `sochdb-{version}-x86_64-pc-windows-msvc.zip`
 
 ### Running a Release
@@ -72,7 +76,8 @@ Wheels are compatible with:
    - Generates release notes with installation instructions
 
 4. **Publish to PyPI**:
-   - Uploads all wheels and source distribution
+   - Uploads wheels only
+   - Keeps the source distribution off PyPI so unsupported platforms do not fall back to a broken binary mix
    - Uses OIDC Trusted Publisher (no token needed)
 
 5. **Summary**:
@@ -155,7 +160,7 @@ sochdb-server --help
 - [ ] Review workflow artifacts and logs
 - [ ] Run workflow with `dry_run: false` for production
 - [ ] Verify GitHub release is created
-- [ ] Verify packages appear on PyPI
+- [ ] Verify only wheel packages appear on PyPI (no sdist upload)
 - [ ] Test installation: `pip install sochdb-client==X.Y.Z`
 - [ ] Update CHANGELOG.md with release notes
 
