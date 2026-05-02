@@ -13,6 +13,11 @@ on:
         required: false
         default: "default"
         type: string
+      skip_if_unreachable:
+        description: "Skip with a warning when the hosted endpoint is unreachable from the runner"
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   contents: read
@@ -44,5 +49,39 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e .
 
+      - name: Check hosted endpoint reachability
+        id: reachability
+        run: |
+          python - <<'PY'
+          import os
+          import socket
+
+          address = os.environ["SOCHDB_GRPC_ADDRESS"]
+          host, port = address.rsplit(":", 1)
+          reachable = "false"
+          reason = ""
+
+          try:
+              with socket.create_connection((host, int(port)), timeout=5):
+                  reachable = "true"
+          except OSError as exc:
+              reason = str(exc).replace("\n", " ")
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
+              fh.write(f"reachable={reachable}\n")
+              fh.write(f"reason={reason}\n")
+          PY
+
+      - name: Warn and skip when endpoint is unreachable
+        if: steps.reachability.outputs.reachable != 'true' && inputs.skip_if_unreachable
+        run: echo "::warning::Hosted endpoint ${SOCHDB_GRPC_ADDRESS} is unreachable from this runner; skipping hosted smoke."
+
+      - name: Fail when endpoint is unreachable
+        if: steps.reachability.outputs.reachable != 'true' && !inputs.skip_if_unreachable
+        run: |
+          echo "::error::Hosted endpoint ${SOCHDB_GRPC_ADDRESS} is unreachable from this runner: ${{ steps.reachability.outputs.reason }}"
+          exit 1
+
       - name: Run hosted smoke example
+        if: steps.reachability.outputs.reachable == 'true'
         run: python examples/27_hosted_remote_smoke.py
