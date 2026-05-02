@@ -1,0 +1,48 @@
+name: Hosted Remote Smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      grpc_address:
+        description: "Hosted SochDB gRPC address"
+        required: false
+        default: "studio.agentslab.host:50053"
+        type: string
+      namespace:
+        description: "Hosted namespace"
+        required: false
+        default: "default"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hosted-smoke-python
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    name: Hosted Python Smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SOCHDB_GRPC_ADDRESS: ${{ inputs.grpc_address }}
+      SOCHDB_NAMESPACE: ${{ inputs.namespace }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install SDK
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+
+      - name: Run hosted smoke example
+        run: python examples/27_hosted_remote_smoke.py

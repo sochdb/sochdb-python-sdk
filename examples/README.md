@@ -27,6 +27,7 @@ cargo build --release
 | `07_session_cache.py` | Embedded | Session caching use case |
 | `08_ipc_client.py` | IPC | Multi-process access via IPC |
 | `26_hosted_studio_ingest.py` | gRPC + Studio | Remote write plus hosted Studio event ingestion |
+| `27_hosted_remote_smoke.py` | gRPC | Minimal hosted remote smoke test for SDK parity |
 
 ## Running Examples
 
@@ -52,6 +53,19 @@ cargo run --bin ipc_server -- --socket /tmp/sochdb.sock
 python examples/08_ipc_client.py
 ```
 
+### Hosted Remote Smoke Test (27)
+
+Runs a minimal hosted gRPC check without requiring Studio event ingestion:
+
+```bash
+SOCHDB_GRPC_ADDRESS=studio.agentslab.host:50053 \
+python examples/27_hosted_remote_smoke.py
+```
+
+There is also a matching manual GitHub Actions workflow at
+`.github/workflows/hosted-smoke.yml` for running the same hosted smoke path on
+demand.
+
 ## Directory Structure
 
 ```
@@ -66,6 +80,7 @@ examples/
 ├── 07_session_cache.py         # Session caching pattern
 ├── 08_ipc_client.py            # IPC client examples
 ├── 26_hosted_studio_ingest.py  # Remote SochDB + hosted Studio example
+├── 27_hosted_remote_smoke.py   # Minimal hosted gRPC smoke test
 └── shared/
     └── mock_server.py          # Mock server for testing
 ```
