@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from pathlib import Path
+import sys
 from typing import Any, Dict, List, Optional, Sequence
 
-from sochdb.integrations.crewai import (
-    SochDBKnowledgeHit,
-    SochDBKnowledgeStore,
-)
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+
+from sochdb.grpc_client import Document
+from sochdb.integrations.crewai import SochDBKnowledgeHit, SochDBKnowledgeStore
 
 
 class FakeBackend:
@@ -38,6 +40,53 @@ class FakeBackend:
                 )
             )
         return hits[:k]
+
+
+class FakeGrpcClient:
+    def __init__(self) -> None:
+        self.add_calls: List[Dict[str, Any]] = []
+        self.search_calls: List[Dict[str, Any]] = []
+
+    def add_documents(
+        self,
+        collection_name: str,
+        documents: List[Dict[str, Any]],
+        namespace: str = "default",
+    ) -> List[str]:
+        self.add_calls.append(
+            {
+                "collection_name": collection_name,
+                "documents": documents,
+                "namespace": namespace,
+            }
+        )
+        return [doc["id"] for doc in documents]
+
+    def search_collection(
+        self,
+        collection_name: str,
+        query: List[float],
+        k: int = 10,
+        namespace: str = "default",
+        filter: Optional[Dict[str, str]] = None,
+    ) -> List[Document]:
+        self.search_calls.append(
+            {
+                "collection_name": collection_name,
+                "query": query,
+                "k": k,
+                "namespace": namespace,
+                "filter": filter,
+            }
+        )
+        return [
+            Document(
+                id="grpc-doc-1",
+                content="remote benchmark note",
+                embedding=[1.0, 0.0],
+                metadata={"topic": "benchmark"},
+            )
+        ]
 
 
 def fake_embedder(texts: Sequence[str]) -> List[List[float]]:
@@ -102,3 +151,26 @@ def test_format_hits_is_human_readable() -> None:
     assert "doc-1" in text
     assert "architecture" in text
     assert "0.7500" in text
+
+
+def test_from_client_uses_grpc_backend() -> None:
+    client = FakeGrpcClient()
+    store = SochDBKnowledgeStore.from_client(
+        client,
+        collection_name="knowledge",
+        namespace="crew",
+        embedder=fake_embedder,
+    )
+
+    inserted_ids = store.add_texts(
+        ["remote deployment note"],
+        metadatas=[{"topic": "deployment"}],
+        ids=["grpc-1"],
+    )
+    hits = store.search("deployment", top_k=3, metadata_filter={"topic": "benchmark"})
+
+    assert inserted_ids == ["grpc-1"]
+    assert client.add_calls[0]["collection_name"] == "knowledge"
+    assert client.add_calls[0]["namespace"] == "crew"
+    assert client.search_calls[0]["filter"] == {"topic": "benchmark"}
+    assert hits[0].id == "grpc-doc-1"
