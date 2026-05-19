@@ -10,6 +10,7 @@ Environment variables:
     SOCHDB_NAMESPACE      default: default
     CREWAI_MODEL          default: gpt-4o-mini
     OPENAI_API_KEY        required by CrewAI for the default LLM provider
+    SOCHDB_CREWAI_SKIP_KICKOFF=1 to only validate remote storage/search setup
 
 Install:
     pip install -e ".[crewai]"
@@ -75,36 +76,53 @@ def build_remote_store(client: SochDBClient, namespace: str) -> tuple[str, SochD
 
 
 def main() -> None:
-    from crewai import Agent, Crew, Task
-
     grpc_address = os.environ.get("SOCHDB_GRPC_ADDRESS", DEFAULT_GRPC_ADDRESS)
     namespace = os.environ.get("SOCHDB_NAMESPACE", DEFAULT_NAMESPACE)
     model = os.environ.get("CREWAI_MODEL", "gpt-4o-mini")
+    skip_kickoff = os.environ.get("SOCHDB_CREWAI_SKIP_KICKOFF", "").lower() in {
+        "1",
+        "true",
+        "yes",
+    }
 
     client = SochDBClient(grpc_address)
     collection_name, store = build_remote_store(client, namespace)
-    search_tool, remember_tool = create_crewai_tools(store, top_k=3)
-
-    researcher = Agent(
-        role="SochDB Remote Researcher",
-        goal="Answer questions using the hosted SochDB knowledge base.",
-        backstory="You always search the remote collection before making a claim.",
-        llm=model,
-        tools=[search_tool, remember_tool],
-        verbose=True,
-    )
-
-    task = Task(
-        description=(
-            "Find the current 10GB benchmark takeaway and summarize it in 2-3 sentences. "
-            "Use the SochDB tools and mention that the knowledge came from the remote store."
-        ),
-        expected_output="A short grounded summary of the latest 10GB benchmark result.",
-        agent=researcher,
-    )
-
     print(f"Using remote collection: {collection_name} in namespace={namespace}")
     try:
+        if skip_kickoff:
+            hits = store.search("What is the 10GB benchmark takeaway?", top_k=2)
+            print("\n=== Remote Store Smoke ===\n")
+            print(store.format_hits(hits))
+            return
+
+        if not os.environ.get("OPENAI_API_KEY"):
+            raise SystemExit(
+                "OPENAI_API_KEY is required for the CrewAI kickoff. "
+                "Set SOCHDB_CREWAI_SKIP_KICKOFF=1 to validate the remote SochDB path without an LLM."
+            )
+
+        from crewai import Agent, Crew, Task
+
+        search_tool, remember_tool = create_crewai_tools(store, top_k=3)
+
+        researcher = Agent(
+            role="SochDB Remote Researcher",
+            goal="Answer questions using the hosted SochDB knowledge base.",
+            backstory="You always search the remote collection before making a claim.",
+            llm=model,
+            tools=[search_tool, remember_tool],
+            verbose=True,
+        )
+
+        task = Task(
+            description=(
+                "Find the current 10GB benchmark takeaway and summarize it in 2-3 sentences. "
+                "Use the SochDB tools and mention that the knowledge came from the remote store."
+            ),
+            expected_output="A short grounded summary of the latest 10GB benchmark result.",
+            agent=researcher,
+        )
+
         crew = Crew(agents=[researcher], tasks=[task], verbose=True)
         result = crew.kickoff()
         print("\n=== Crew Result ===\n")

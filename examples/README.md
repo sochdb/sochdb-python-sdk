@@ -92,6 +92,15 @@ OPENAI_API_KEY=... \
 SOCHDB_GRPC_ADDRESS=studio.agentslab.host:50053 \
 python examples/29_crewai_remote_tools.py
 ```
+
+If you want to validate just the remote SochDB side before wiring an LLM
+provider, you can run a storage/search smoke instead:
+
+```bash
+SOCHDB_GRPC_ADDRESS=studio.agentslab.host:50053 \
+SOCHDB_CREWAI_SKIP_KICKOFF=1 \
+python examples/29_crewai_remote_tools.py
+```
 ## Directory Structure
 
 ```

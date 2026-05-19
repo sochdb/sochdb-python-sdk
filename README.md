@@ -67,6 +67,8 @@ search_tool, remember_tool = create_crewai_tools(store, top_k=3)
 
 See `examples/28_crewai_knowledge_tools.py` for a complete example.
 See `examples/29_crewai_remote_tools.py` for the hosted/gRPC variant.
+The remote example also supports `SOCHDB_CREWAI_SKIP_KICKOFF=1` to smoke-test
+remote storage and retrieval without LLM credentials.
 ┌─────────────────────────────────────────────────────────────┐
 │                    DEPLOYMENT OPTIONS                        │
 ├─────────────────────────────────────────────────────────────┤
