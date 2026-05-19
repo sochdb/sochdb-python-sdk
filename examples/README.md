@@ -28,6 +28,7 @@ cargo build --release
 | `08_ipc_client.py` | IPC | Multi-process access via IPC |
 | `26_hosted_studio_ingest.py` | gRPC + Studio | Remote write plus hosted Studio event ingestion |
 | `27_hosted_remote_smoke.py` | gRPC | Minimal hosted remote smoke test for SDK parity |
+| `28_crewai_knowledge_tools.py` | Embedded + CrewAI | CrewAI tools backed by SochDB knowledge search |
 
 ## Running Examples
 
@@ -66,6 +67,19 @@ There is also a matching manual GitHub Actions workflow at
 `.github/workflows/hosted-smoke.yml` for running the same hosted smoke path on
 demand.
 
+Latest hosted validation:
+
+- GitHub-hosted workflow passed on May 5, 2026:
+  `https://github.com/SaiSandeepKantareddy/sochdb-python-sdk/actions/runs/25357489415`
+
+### CrewAI Knowledge Tools (28)
+
+Runs a CrewAI agent with SochDB-backed `search` and `remember` tools:
+
+```bash
+pip install -e ".[crewai]"
+OPENAI_API_KEY=... python examples/28_crewai_knowledge_tools.py
+```
 ## Directory Structure
 
 ```
@@ -81,6 +95,7 @@ examples/
 ├── 08_ipc_client.py            # IPC client examples
 ├── 26_hosted_studio_ingest.py  # Remote SochDB + hosted Studio example
 ├── 27_hosted_remote_smoke.py   # Minimal hosted gRPC smoke test
+├── 28_crewai_knowledge_tools.py # CrewAI tools backed by SochDB knowledge
 └── shared/
     └── mock_server.py          # Mock server for testing
 ```

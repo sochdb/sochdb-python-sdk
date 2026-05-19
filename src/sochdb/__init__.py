@@ -70,6 +70,14 @@ from .queue import (
 from .grpc_client import SochDBClient, SearchResult, Document, GraphNode, GraphEdge, TemporalEdge
 from .ipc_client import IpcClient
 from .studio import StudioAPIError, StudioClient, StudioEventIngestResult
+from .integrations import (
+    SochDBKnowledgeHit,
+    SochDBKnowledgeStore,
+    SochDBRememberTool,
+    SochDBSearchTool,
+    create_crewai_tools,
+    crewai_available,
+)
 
 # Format utilities
 from .format import (
@@ -157,6 +165,12 @@ __all__ = [
     "StudioClient",
     "StudioAPIError",
     "StudioEventIngestResult",
+    "SochDBKnowledgeHit",
+    "SochDBKnowledgeStore",
+    "SochDBSearchTool",
+    "SochDBRememberTool",
+    "create_crewai_tools",
+    "crewai_available",
     
     # Format utilities
     "WireFormat",
