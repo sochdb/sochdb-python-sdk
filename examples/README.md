@@ -28,6 +28,8 @@ cargo build --release
 | `08_ipc_client.py` | IPC | Multi-process access via IPC |
 | `26_hosted_studio_ingest.py` | gRPC + Studio | Remote write plus hosted Studio event ingestion |
 | `27_hosted_remote_smoke.py` | gRPC | Minimal hosted remote smoke test for SDK parity |
+| `28_crewai_knowledge_tools.py` | Embedded + CrewAI | CrewAI tools backed by SochDB knowledge search |
+| `29_crewai_remote_tools.py` | gRPC + CrewAI | CrewAI tools backed by a remote SochDB collection |
 
 ## Running Examples
 
@@ -66,6 +68,39 @@ There is also a matching manual GitHub Actions workflow at
 `.github/workflows/hosted-smoke.yml` for running the same hosted smoke path on
 demand.
 
+Latest hosted validation:
+
+- GitHub-hosted workflow passed on May 5, 2026:
+  `https://github.com/SaiSandeepKantareddy/sochdb-python-sdk/actions/runs/25357489415`
+
+### CrewAI Knowledge Tools (28)
+
+Runs a CrewAI agent with SochDB-backed `search` and `remember` tools:
+
+```bash
+pip install -e ".[crewai]"
+OPENAI_API_KEY=... python examples/28_crewai_knowledge_tools.py
+```
+
+### CrewAI Remote Knowledge Tools (29)
+
+Runs the same CrewAI tool surface against a hosted SochDB collection over gRPC:
+
+```bash
+pip install -e ".[crewai]"
+OPENAI_API_KEY=... \
+SOCHDB_GRPC_ADDRESS=studio.agentslab.host:50053 \
+python examples/29_crewai_remote_tools.py
+```
+
+If you want to validate just the remote SochDB side before wiring an LLM
+provider, you can run a storage/search smoke instead:
+
+```bash
+SOCHDB_GRPC_ADDRESS=studio.agentslab.host:50053 \
+SOCHDB_CREWAI_SKIP_KICKOFF=1 \
+python examples/29_crewai_remote_tools.py
+```
 ## Directory Structure
 
 ```
@@ -81,6 +116,8 @@ examples/
 ├── 08_ipc_client.py            # IPC client examples
 ├── 26_hosted_studio_ingest.py  # Remote SochDB + hosted Studio example
 ├── 27_hosted_remote_smoke.py   # Minimal hosted gRPC smoke test
+├── 28_crewai_knowledge_tools.py # CrewAI tools backed by SochDB knowledge
+├── 29_crewai_remote_tools.py   # CrewAI tools backed by remote SochDB
 └── shared/
     └── mock_server.py          # Mock server for testing
 ```

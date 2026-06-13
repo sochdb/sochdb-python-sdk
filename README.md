@@ -11,6 +11,12 @@ Choose the deployment mode that fits your needs.
 pip install sochdb
 ```
 
+Optional framework integration:
+
+```bash
+pip install "sochdb[crewai]"
+```
+
 Or from source:
 ```bash
 cd sochdb-python-sdk
@@ -24,6 +30,45 @@ pip install -e .
 ## Architecture: Flexible Deployment
 
 ```
+
+### CrewAI Integration
+
+The Python SDK includes an optional CrewAI integration layer for SochDB-backed
+knowledge search and memory writes.
+
+Available helpers:
+
+- `SochDBKnowledgeStore`
+- `create_crewai_tools(...)`
+- `SochDBKnowledgeStore.from_collection(...)` for embedded mode
+- `SochDBKnowledgeStore.from_client(...)` for gRPC / hosted mode
+
+Example:
+
+```python
+from sochdb import Database, Namespace, SochDBKnowledgeStore, create_crewai_tools
+
+def embed(texts):
+    ...
+
+db = Database.open("./crewai_demo")
+ns = Namespace(db, "crew")
+collection = ns.create_collection("knowledge", dimension=384)
+
+store = SochDBKnowledgeStore.from_collection(collection, embedder=embed)
+store.add_texts(
+    ["SochDB supports embedded and gRPC modes."],
+    metadatas=[{"topic": "architecture"}],
+    ids=["arch-1"],
+)
+
+search_tool, remember_tool = create_crewai_tools(store, top_k=3)
+```
+
+See `examples/28_crewai_knowledge_tools.py` for a complete example.
+See `examples/29_crewai_remote_tools.py` for the hosted/gRPC variant.
+The remote example also supports `SOCHDB_CREWAI_SKIP_KICKOFF=1` to smoke-test
+remote storage and retrieval without LLM credentials.
 ┌─────────────────────────────────────────────────────────────┐
 │                    DEPLOYMENT OPTIONS                        │
 ├─────────────────────────────────────────────────────────────┤
