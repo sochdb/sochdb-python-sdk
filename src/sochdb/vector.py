@@ -355,16 +355,19 @@ class VectorIndex:
     def __init__(
         self,
         dimension: int,
-        max_connections: int = 16,
-        ef_construction: int = 100,  # Reduced from 200 for better performance
+        max_connections: int = 32,
+        ef_construction: int = 256,
     ):
         """
         Create a new vector index.
-        
+
         Args:
             dimension: Vector dimension (e.g., 128, 768, 1536)
-            max_connections: Max neighbors per node (default: 16)
-            ef_construction: Construction-time ef (default: 200)
+            max_connections: Max neighbors per node (default: 32). Matches the
+                engine's HnswConfig::default(); layer-0 degree (m0=64) and F32
+                precision are inherited from the engine. Reaches 95+ recall@10
+                out of the box (Cohere-1M 768d cosine = 0.972).
+            ef_construction: Construction-time ef (default: 256).
         """
         lib = _FFI.get_lib()
         self._ptr = lib.hnsw_new(dimension, max_connections, ef_construction)

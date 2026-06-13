@@ -3485,7 +3485,7 @@ class Database:
     # Vector Index Operations (convenience methods)
     # =========================================================================
     
-    def create_index(self, name: str, dimension: int, max_connections: int = 16, ef_construction: int = 200):
+    def create_index(self, name: str, dimension: int, max_connections: int = 32, ef_construction: int = 256):
         """
         Create a vector index (HNSW).
         
@@ -3495,8 +3495,8 @@ class Database:
         Args:
             name: Index name
             dimension: Vector dimension
-            max_connections: HNSW max_connections parameter (connections per layer, default=16)
-            ef_construction: HNSW ef_construction parameter (default=200)
+            max_connections: HNSW max_connections parameter (connections per layer, default=32)
+            ef_construction: HNSW ef_construction parameter (default=256)
         
         Example:
             db.create_index('embeddings', 384)
@@ -3547,8 +3547,8 @@ class Database:
             metadata = json.loads(metadata_bytes.decode())
             index = VectorIndex(
                 metadata['dimension'],
-                max_connections=metadata.get('max_connections', 16),
-                ef_construction=metadata.get('ef_construction', 200)
+                max_connections=metadata.get('max_connections', 32),
+                ef_construction=metadata.get('ef_construction', 256)
             )
             self._vector_indices[index_name] = index
         
@@ -3588,8 +3588,8 @@ class Database:
             metadata = json.loads(metadata_bytes.decode())
             index = VectorIndex(
                 metadata['dimension'],
-                max_connections=metadata.get('max_connections', 16),
-                ef_construction=metadata.get('ef_construction', 200)
+                max_connections=metadata.get('max_connections', 32),
+                ef_construction=metadata.get('ef_construction', 256)
             )
             self._vector_indices[index_name] = index
         
