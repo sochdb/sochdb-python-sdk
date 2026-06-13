@@ -130,8 +130,8 @@ class SochDBClient:
         name: str,
         dimension: int,
         metric: str = "cosine",
-        m: int = 16,
-        ef_construction: int = 200,
+        m: int = 32,
+        ef_construction: int = 256,
         ef_search: int = 0
     ) -> bool:
         """Create a new vector index."""
