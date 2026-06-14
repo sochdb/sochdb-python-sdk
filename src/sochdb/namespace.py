@@ -44,9 +44,16 @@ try:
 
     def _dumps_bytes(obj) -> bytes:
         return _orjson.dumps(obj, option=_orjson.OPT_SERIALIZE_NUMPY)
+
+    def _loads(data: bytes):
+        # orjson parses bytes directly (no .decode()), ~2-3x faster than stdlib.
+        return _orjson.loads(data)
 except ImportError:  # pragma: no cover - orjson is an optional accelerator
     def _dumps_bytes(obj) -> bytes:
         return json.dumps(obj).encode()
+
+    def _loads(data: bytes):
+        return json.loads(data)
 from dataclasses import dataclass, field
 from typing import (
     TYPE_CHECKING,
@@ -252,6 +259,11 @@ class SearchRequest:
     # Hybrid search weights
     alpha: float = 0.5  # 0.0 = pure keyword, 1.0 = pure vector
     rrf_k: float = 60.0  # RRF k parameter
+
+    # Keyword leg algorithm for keyword/hybrid search:
+    #   "bm25" - BM25 relevance ranking (default, native FFI when available)
+    #   "grep" - case-insensitive substring AND-match (all query terms must appear)
+    keyword_mode: str = "bm25"
     
     # Multi-vector aggregation
     aggregate: str = "max"  # max | mean | first
@@ -278,6 +290,11 @@ class SearchRequest:
         
         if not 0.0 <= self.alpha <= 1.0:
             raise ValidationError(f"alpha must be between 0 and 1, got {self.alpha}")
+
+        if self.keyword_mode not in ("bm25", "grep"):
+            raise ValidationError(
+                f"keyword_mode must be 'bm25' or 'grep', got {self.keyword_mode!r}"
+            )
 
 
 @dataclass
@@ -353,6 +370,7 @@ class Collection:
         self._next_internal_id: int = 0
         self._raw_vectors: Dict[Union[str, int], Any] = {}  # doc_id -> vector (for snapshot)
         self._ef_search_override: Optional[int] = None  # deferred ef_search setting
+        self._deleted_internal_ids: set = set()  # internal ids tombstoned by delete()
     
     # ========================================================================
     # Storage Key Helpers
@@ -814,7 +832,9 @@ class Collection:
             # Pure vector search
             return self._vector_search(request)
         else:
-            # Pure keyword search
+            # Pure keyword search (BM25 or grep)
+            if request.keyword_mode == "grep":
+                return self._grep_search(request)
             return self._keyword_search(request)
     
     def vector_search(
@@ -876,7 +896,42 @@ class Collection:
             alpha=0.0,  # Pure keyword
         )
         return self.search(request)
-    
+
+    def grep_search(
+        self,
+        query: str,
+        k: int = 10,
+        filter: Optional[Dict[str, Any]] = None,
+    ) -> SearchResults:
+        """
+        Convenience method for grep-style keyword search.
+
+        Unlike :meth:`keyword_search` (BM25 relevance ranking), this performs a
+        case-insensitive substring AND-match: a document matches only if *every*
+        whitespace-separated query term appears as a substring of its content or
+        string metadata. Results are ranked by total term-occurrence count.
+
+        This is a precision-oriented exact-match retriever (fast, no scoring
+        model). Use it as the keyword leg of a "grep + HNSW" hybrid via
+        ``hybrid_search(..., keyword_mode="grep")``.
+
+        Args:
+            query: Text query (all terms must appear)
+            k: Number of results
+            filter: Optional metadata filter
+
+        Returns:
+            SearchResults
+        """
+        request = SearchRequest(
+            text_query=query,
+            k=k,
+            filter=filter,
+            alpha=0.0,
+            keyword_mode="grep",
+        )
+        return self.search(request)
+
     def hybrid_search(
         self,
         vector: List[float],
@@ -884,6 +939,7 @@ class Collection:
         k: int = 10,
         alpha: float = 0.5,
         filter: Optional[Dict[str, Any]] = None,
+        keyword_mode: str = "bm25",
     ) -> SearchResults:
         """
         Convenience method for hybrid (vector + keyword) search.
@@ -896,6 +952,9 @@ class Collection:
             k: Number of results
             alpha: Balance between vector (1.0) and keyword (0.0)
             filter: Optional metadata filter
+            keyword_mode: Keyword leg algorithm — "bm25" (relevance ranking) or
+                "grep" (case-insensitive substring AND-match). Combine with the
+                HNSW vector leg to get "BM25 + HNSW" or "grep + HNSW".
             
         Returns:
             SearchResults
@@ -906,6 +965,7 @@ class Collection:
             k=k,
             alpha=alpha,
             filter=filter,
+            keyword_mode=keyword_mode,
         )
         return self.search(request)
     
@@ -921,13 +981,22 @@ class Collection:
         
         if request.vector is None:
             return SearchResults(results=[], total_count=0, query_time_ms=0.0)
-        
+
+        # Filtered search needs an adaptively-widened candidate pool; a fixed
+        # k*3 under-returns when the filter is selective. Route the in-memory
+        # path to the dedicated widening driver.
+        if request.filter:
+            if self._vector_index is not None and len(self._vector_index) > 0:
+                return self._search_in_memory_filtered(request, start_time)
+            if self._config.dimension is not None and self._reload_vectors_from_snapshot() > 0:
+                return self._search_in_memory_filtered(request, start_time)
+
         search_k = request.k * 3 if request.filter else request.k
-        
+
         # Primary path: in-memory HNSW (same session, fast)
         if self._vector_index is not None and len(self._vector_index) > 0:
             return self._search_in_memory(request, search_k, start_time)
-        
+
         # Reload path: load vectors from snapshot into HNSW (fast batch insert)
         if self._config.dimension is not None:
             loaded = self._reload_vectors_from_snapshot()
@@ -969,13 +1038,21 @@ class Collection:
     def _search_in_memory(self, request: SearchRequest, search_k: int, start_time: float) -> SearchResults:
         """Search using the in-memory HNSW index."""
         import time
-        
-        raw_results = self._vector_index.search(request.vector, search_k)
-        
+
+        # Over-fetch to compensate for tombstoned nodes still living in the
+        # HNSW graph (deleted docs would otherwise consume top-k slots and make
+        # us under-return). Cheap when few deletes; bounded by the index size.
+        ndel = len(self._deleted_internal_ids)
+        fetch_k = min(search_k + ndel, len(self._vector_index)) if ndel else search_k
+        raw_results = self._ann_candidates(request.vector, fetch_k)
+
         results = []
+        seen = set()
         for internal_id, distance in raw_results:
+            if internal_id in self._deleted_internal_ids:
+                continue
             doc_id = self._internal_to_id.get(internal_id)
-            if doc_id is None:
+            if doc_id is None or doc_id in seen:
                 continue
             # Convert distance to similarity (higher = better)
             similarity = max(0.0, 1.0 - distance)
@@ -984,6 +1061,7 @@ class Collection:
             metadata = self._metadata_store.get(doc_id, {})
             if request.filter and not self._matches_filter(metadata, request.filter):
                 continue
+            seen.add(doc_id)
             result = SearchResult(
                 id=str(doc_id), score=similarity,
                 metadata=metadata if request.include_metadata else None,
@@ -992,9 +1070,106 @@ class Collection:
             results.append(result)
             if len(results) >= request.k:
                 break
-        
+
         elapsed = (time.time() - start_time) * 1000
         return SearchResults(results=results, total_count=len(results), query_time_ms=elapsed)
+
+    def _search_in_memory_filtered(self, request: SearchRequest, start_time: float) -> SearchResults:
+        """Vector search with a metadata filter, adaptively widening the ANN
+        candidate pool until k survivors are found or the index is exhausted.
+
+        Fixes under-return: a fixed k*3 pool drops below k results when the
+        filter is selective. Widens geometrically with a latency cap, lifting
+        ef_search to match (and restoring it afterwards so later unfiltered
+        queries are not slowed).
+        """
+        import time
+
+        vi = self._vector_index
+        n_total = len(vi)
+        k = request.k
+        MAX_SEARCH_K = max(2000, k * 50)
+        EF_CEILING = 4000
+
+        try:
+            prev_ef = vi.ef_search
+        except Exception:
+            prev_ef = None
+
+        search_k = min(max(k * 4, 16), n_total) if n_total else k
+        prev_count = -1
+        best: list = []
+        try:
+            while True:
+                # The HNSW never returns more than ef_search neighbours; lift it.
+                if prev_ef is not None:
+                    desired = min(max(prev_ef, search_k), EF_CEILING)
+                    if desired > (prev_ef or 0):
+                        try:
+                            vi.ef_search = desired
+                        except Exception:
+                            pass
+                raw = self._ann_candidates(request.vector, search_k)
+                results = []
+                seen = set()
+                for internal_id, distance in raw:
+                    if internal_id in self._deleted_internal_ids:
+                        continue
+                    doc_id = self._internal_to_id.get(internal_id)
+                    if doc_id is None or doc_id in seen:
+                        continue
+                    similarity = max(0.0, 1.0 - distance)
+                    if request.min_score is not None and similarity < request.min_score:
+                        continue
+                    metadata = self._metadata_store.get(doc_id, {})
+                    if not self._matches_filter(metadata, request.filter):
+                        continue
+                    seen.add(doc_id)
+                    results.append(SearchResult(
+                        id=str(doc_id), score=similarity,
+                        metadata=metadata if request.include_metadata else None,
+                        vector=None,
+                    ))
+                    if len(results) >= k:
+                        break
+                best = results
+                if len(results) >= k:
+                    break
+                if not n_total or search_k >= n_total or search_k >= MAX_SEARCH_K:
+                    break
+                if len(raw) <= prev_count:  # index returned no new candidates (ef ceiling)
+                    break
+                prev_count = len(raw)
+                search_k = min(search_k * 2, n_total, MAX_SEARCH_K)
+        finally:
+            # Restore ef_search so later unfiltered queries are not slowed.
+            if prev_ef is not None:
+                try:
+                    vi.ef_search = prev_ef
+                except Exception:
+                    pass
+
+        elapsed = (time.time() - start_time) * 1000
+        return SearchResults(results=best, total_count=len(best), query_time_ms=elapsed)
+
+    def _ann_candidates(self, vector, search_k: int):
+        """Fetch ANN candidates, size-gating to the faster HNSW path.
+
+        Above the Rust flat-scan threshold, search_fast (lock-light HNSW) is
+        faster than search() at identical recall; below it, search() uses a
+        perfect-recall brute-force scan that is faster, so keep it there.
+        Returns a list of (internal_id, distance).
+        """
+        vi = self._vector_index
+        n = len(vi)
+        dim = self._config.dimension or getattr(vi, "dimension", 0) or 128
+        flat_threshold = 10000 if dim <= 128 else (4000 if dim <= 384 else 1000)
+        if n > flat_threshold and hasattr(vi, "search_fast"):
+            try:
+                return vi.search_fast(vector, search_k)
+            except Exception:
+                return vi.search(vector, search_k)
+        return vi.search(vector, search_k)
     
     # ── Persistence helpers ──────────────────────────────────────────────
 
@@ -1264,7 +1439,180 @@ class Collection:
             query_time_ms=query_time_ms,
             keyword_results=len(results),
         )
-    
+
+    def _grep_search(self, request: SearchRequest) -> SearchResults:
+        """Internal grep-style keyword search.
+
+        Case-insensitive substring AND-match: a document is a hit only if every
+        whitespace-separated query term appears as a substring of the combined
+        searchable text (content + string metadata values). Results are ranked
+        by the total number of term occurrences (a simple, model-free signal).
+
+        Unlike :meth:`_keyword_search`, there is no IDF/BM25 weighting and no
+        stopword removal — this is an exact-match retriever optimised for
+        precision and predictability.
+        """
+        import time
+
+        start_time = time.time()
+
+        if not request.text_query:
+            return SearchResults(results=[], total_count=0, query_time_ms=0.0)
+
+        terms = [t for t in request.text_query.lower().split() if t]
+        if not terms:
+            return SearchResults(results=[], total_count=0, query_time_ms=0.0)
+
+        # --- Primary path: scan the in-memory metadata store -----------------
+        # The collection already keeps every document's content + metadata in
+        # `self._metadata_store` (content lives under the injected `_content`
+        # key). That is everything grep needs — and crucially it holds NO vector
+        # payload, so we avoid the real bottleneck: pulling all stored documents
+        # (each embedding its full vector) across the FFI boundary and JSON-
+        # parsing them on every query. This makes grep a pure in-process dict
+        # scan over small text, mirroring how vector search prefers the
+        # in-memory HNSW before touching storage.
+        if not self._metadata_store and self._config.dimension is not None:
+            # Same lazy-rebuild trigger used by vector search: repopulate the
+            # in-memory maps (including metadata/content) from the snapshot.
+            self._reload_vectors_from_snapshot()
+
+        if self._metadata_store:
+            return self._grep_search_in_memory(request, terms, start_time)
+
+        # --- Fallback path: scan the KV store --------------------------------
+        # Reached only when nothing is loaded in memory (e.g. a freshly reopened
+        # collection with no snapshot). Uses a raw-bytes prefilter + deferred
+        # parse to limit the cost of reading full doc payloads.
+        return self._grep_search_kv(request, terms, start_time)
+
+    def _grep_search_in_memory(
+        self, request: SearchRequest, terms: List[str], start_time: float
+    ) -> SearchResults:
+        """grep over the in-memory metadata/content store (no FFI, no parse)."""
+        import time
+
+        has_filter = request.filter is not None
+        scored = []  # (score, doc_id, metadata)
+        for doc_id, meta in self._metadata_store.items():
+            # Build the searchable text from string metadata values (this
+            # includes the injected `_content` field when content was supplied).
+            parts = [v for v in meta.values() if isinstance(v, str)]
+            if not parts:
+                continue
+            haystack = " ".join(parts).lower()
+
+            if not all(term in haystack for term in terms):
+                continue
+            if has_filter and not self._matches_filter(meta, request.filter):
+                continue
+
+            score = float(sum(haystack.count(term) for term in terms))
+            scored.append((score, doc_id, meta))
+
+        scored.sort(key=lambda x: x[0], reverse=True)
+
+        results = []
+        for score, doc_id, meta in scored[: request.k]:
+            results.append(SearchResult(
+                id=str(doc_id),
+                score=score,
+                metadata=meta if request.include_metadata else None,
+                vector=self._raw_vectors.get(doc_id) if request.include_vectors else None,
+            ))
+
+        query_time_ms = (time.time() - start_time) * 1000
+        return SearchResults(
+            results=results,
+            total_count=len(scored),
+            query_time_ms=query_time_ms,
+            keyword_results=len(results),
+        )
+
+    def _grep_search_kv(
+        self, request: SearchRequest, terms: List[str], start_time: float
+    ) -> SearchResults:
+        """grep fallback that scans the KV store when nothing is in memory."""
+        import time
+
+        # --- Fast path: rank on raw bytes, defer JSON parsing to top-k -------
+        # Each stored doc embeds its full vector, so json.loads() is by far the
+        # dominant cost (the vector payload dwarfs the text). Two optimisations:
+        #
+        #   1. Prefilter on the lowercased raw bytes. grep is a substring
+        #      AND-match, so a term absent from the raw bytes cannot match the
+        #      parsed text either. ASCII query terms (the common case) get a
+        #      sound prefilter with no false negatives; non-ASCII terms bypass it
+        #      and are validated after parsing.
+        #   2. Score candidates from the raw bytes too, then sort and parse ONLY
+        #      the documents we actually return. We never parse the long tail of
+        #      matches that fall outside the top-k, turning ~O(matches) parses
+        #      into ~O(k).
+        prefilter = [t.encode("utf-8") for t in terms if t.isascii()]
+
+        prefix = self._vectors_prefix()
+        has_filter = request.filter is not None
+
+        # Collect (raw_score, value_bytes) candidates without parsing.
+        candidates = []
+        with self._db.transaction() as txn:
+            for _key, value in txn.scan_prefix(prefix):
+                low = value.lower()
+                # Cheap necessary-condition check; skips the vast majority.
+                if not all(tb in low for tb in prefilter):
+                    continue
+                # Approximate occurrence score straight off the raw bytes. This
+                # can include JSON keys/structure but is a strong, cheap proxy
+                # for ranking; the exact score is recomputed for returned docs.
+                raw_score = sum(low.count(tb) for tb in prefilter)
+                candidates.append((raw_score, value))
+
+        # Best candidates first, then parse lazily until we have k results.
+        candidates.sort(key=lambda c: c[0], reverse=True)
+
+        results = []
+        for _raw_score, value in candidates:
+            if len(results) >= request.k:
+                break
+
+            doc = _loads(value)
+            metadata = doc.get("metadata", {}) or {}
+
+            # Build the searchable text (content + string metadata values).
+            text_fields = [doc.get("content", "") or ""]
+            for v in metadata.values():
+                if isinstance(v, str):
+                    text_fields.append(v)
+            haystack = " ".join(text_fields).lower()
+
+            # Authoritative AND-match on the real text fields only.
+            if not all(term in haystack for term in terms):
+                continue
+
+            if has_filter and not self._matches_filter(metadata, request.filter):
+                continue
+
+            # Exact occurrence score over the text fields (model-free ranking).
+            score = float(sum(haystack.count(term) for term in terms))
+            results.append(SearchResult(
+                id=doc["id"],
+                score=score,
+                metadata=doc.get("metadata") if request.include_metadata else None,
+                vector=doc.get("vector") if request.include_vectors else None,
+            ))
+
+        # Re-sort the returned page by exact score (raw-byte order is approximate).
+        results.sort(key=lambda r: r.score, reverse=True)
+
+        query_time_ms = (time.time() - start_time) * 1000
+
+        return SearchResults(
+            results=results,
+            total_count=len(candidates),
+            query_time_ms=query_time_ms,
+            keyword_results=len(results),
+        )
+
     def _hybrid_search(self, request: SearchRequest) -> SearchResults:
         """Internal hybrid search using RRF (Reciprocal Rank Fusion)."""
         import time
@@ -1273,7 +1621,10 @@ class Collection:
         
         # Get vector and keyword results separately
         vector_results = self._vector_search(request)
-        keyword_results = self._keyword_search(request)
+        if request.keyword_mode == "grep":
+            keyword_results = self._grep_search(request)
+        else:
+            keyword_results = self._keyword_search(request)
         
         # RRF fusion
         rrf_k = request.rrf_k
@@ -1334,15 +1685,33 @@ class Collection:
     def delete(self, id: Union[str, int]) -> bool:
         """
         Delete a document by ID.
-        
-        Uses tombstone-based logical deletion. The vector remains in the
-        index but won't be returned in search results.
+
+        Removes the document from the KV store AND evicts it from the
+        in-memory HNSW index state so it is no longer returned by vector
+        search. (Previously only the KV key was tombstoned, so the vector
+        remained searchable and surfaced stale content.)
         """
         key = self._vector_key(id)
         with self._db.transaction() as txn:
             if txn.get(key) is None:
                 return False
             txn.delete(key)
+        # Evict from in-memory state so vector search stops returning it.
+        iid = self._id_to_internal.get(id)
+        if iid is not None:
+            self._deleted_internal_ids.add(iid)
+            # Tombstone in the Rust HNSW too, if the loaded dylib supports it
+            # (no-op on older dylibs; the Python maps already fix the session).
+            remove = getattr(self._vector_index, "remove", None)
+            if remove is not None:
+                try:
+                    remove(iid)
+                except Exception:
+                    pass
+            self._internal_to_id.pop(iid, None)
+            self._id_to_internal.pop(id, None)
+        self._metadata_store.pop(id, None)
+        self._raw_vectors.pop(id, None)
         return True
     
     def count(self) -> int:
