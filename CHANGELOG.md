@@ -5,6 +5,55 @@ All notable changes to the SochDB Python SDK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-06-13
+
+### Added
+
+- **Agent memory release** — consolidates the `sochdb.memory.agent_memory` API
+  (`AgentMemory`, `QueryLanes`, `build_search_section`, `build_ingest_section`,
+  `create_agent_memory`) and the `ContextService` client methods
+  (`write_episode`, `estimate_tokens`, `format_context`) backed by regenerated
+  gRPC stubs that include `WriteEpisode`.
+- **Example:** `examples/30_agent_memory.py`
+- **`as_of` point-in-time search** carried over from 0.5.9.
+
+## [0.5.9] - 2026-06-10
+
+### Added
+
+- **`as_of` point-in-time search** — `AgentMemory.search(as_of=<unix_ms>)` and
+  `build_search_section(..., as_of=...)` pass bi-temporal query time via SEARCH
+  section options to `ContextService` / `sochdb-memory`.
+
+### Tests
+
+- `tests/test_asof_integration.py` — gRPC integration (skipped if server down)
+
+## [0.5.8] - 2026-06-10
+
+### Added
+
+- **Agent memory API** (`sochdb.memory.agent_memory`, exported from `sochdb`):
+  - `AgentMemory` — high-level wrapper for `ContextService` + sochdb-memory backend
+  - `QueryLanes` — `lexical`, `three_lane`, `hybrid`, `bm25`, `trigram`
+  - `build_search_section`, `build_ingest_section`, `create_agent_memory`
+
+- **ContextService gRPC client methods** on `SochDBClient`:
+  - `write_episode` — preferred episode ingest (lexical index + async vector enrich)
+  - `estimate_tokens` — exact BPE token count
+  - `format_context` — toon/json/markdown/text formatting
+
+- **Response dataclasses:** `ContextQueryResult`, `ContextSectionResult`, `EpisodeWriteResult`
+
+- **Example:** `examples/30_agent_memory.py`
+
+- **Proto sync:** `proto/sochdb.proto` aligned with main repo; `scripts/generate_proto.sh` for stub regeneration
+
+### Changed
+
+- **`query_context` return type** — now returns `ContextQueryResult` instead of `str`. Use `.context` for the assembled string.
+- **`query_context` parameters** — added `format` and `include_schema`; sections support `options` dict (`lanes`, `namespace`, `episode_text`, `doc_id`, …)
+
 ## [0.5.5] - 2026-02-21
 
 ### Fixed

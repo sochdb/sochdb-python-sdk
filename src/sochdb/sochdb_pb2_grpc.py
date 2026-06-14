@@ -5,7 +5,7 @@ import warnings
 
 from . import sochdb_pb2 as sochdb__pb2
 
-GRPC_GENERATED_VERSION = '1.76.0'
+GRPC_GENERATED_VERSION = '1.81.0'
 GRPC_VERSION = grpc.__version__
 _version_not_supported = False
 
@@ -25,7 +25,7 @@ if _version_not_supported:
     )
 
 
-class VectorIndexServiceStub(object):
+class VectorIndexServiceStub:
     """=============================================================================
     VECTOR INDEX SERVICE
     =============================================================================
@@ -86,7 +86,7 @@ class VectorIndexServiceStub(object):
                 _registered_method=True)
 
 
-class VectorIndexServiceServicer(object):
+class VectorIndexServiceServicer:
     """=============================================================================
     VECTOR INDEX SERVICE
     =============================================================================
@@ -206,7 +206,7 @@ def add_VectorIndexServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class VectorIndexService(object):
+class VectorIndexService:
     """=============================================================================
     VECTOR INDEX SERVICE
     =============================================================================
@@ -436,7 +436,7 @@ class VectorIndexService(object):
             _registered_method=True)
 
 
-class GraphServiceStub(object):
+class GraphServiceStub:
     """=============================================================================
     GRAPH SERVICE
     =============================================================================
@@ -507,7 +507,7 @@ class GraphServiceStub(object):
                 _registered_method=True)
 
 
-class GraphServiceServicer(object):
+class GraphServiceServicer:
     """=============================================================================
     GRAPH SERVICE
     =============================================================================
@@ -658,7 +658,7 @@ def add_GraphServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class GraphService(object):
+class GraphService:
     """=============================================================================
     GRAPH SERVICE
     =============================================================================
@@ -964,7 +964,7 @@ class GraphService(object):
             _registered_method=True)
 
 
-class PolicyServiceStub(object):
+class PolicyServiceStub:
     """=============================================================================
     POLICY SERVICE
     =============================================================================
@@ -1000,7 +1000,7 @@ class PolicyServiceStub(object):
                 _registered_method=True)
 
 
-class PolicyServiceServicer(object):
+class PolicyServiceServicer:
     """=============================================================================
     POLICY SERVICE
     =============================================================================
@@ -1067,7 +1067,7 @@ def add_PolicyServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class PolicyService(object):
+class PolicyService:
     """=============================================================================
     POLICY SERVICE
     =============================================================================
@@ -1184,7 +1184,7 @@ class PolicyService(object):
             _registered_method=True)
 
 
-class ContextServiceStub(object):
+class ContextServiceStub:
     """=============================================================================
     CONTEXT SERVICE
     =============================================================================
@@ -1203,6 +1203,11 @@ class ContextServiceStub(object):
                 request_serializer=sochdb__pb2.ContextQueryRequest.SerializeToString,
                 response_deserializer=sochdb__pb2.ContextQueryResponse.FromString,
                 _registered_method=True)
+        self.WriteEpisode = channel.unary_unary(
+                '/sochdb.v1.ContextService/WriteEpisode',
+                request_serializer=sochdb__pb2.WriteEpisodeRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.WriteEpisodeResponse.FromString,
+                _registered_method=True)
         self.EstimateTokens = channel.unary_unary(
                 '/sochdb.v1.ContextService/EstimateTokens',
                 request_serializer=sochdb__pb2.EstimateTokensRequest.SerializeToString,
@@ -1215,7 +1220,7 @@ class ContextServiceStub(object):
                 _registered_method=True)
 
 
-class ContextServiceServicer(object):
+class ContextServiceServicer:
     """=============================================================================
     CONTEXT SERVICE
     =============================================================================
@@ -1225,6 +1230,13 @@ class ContextServiceServicer(object):
 
     def Query(self, request, context):
         """Execute a context query
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def WriteEpisode(self, request, context):
+        """Ingest an episode into agent memory (write-time lexical index)
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -1252,6 +1264,11 @@ def add_ContextServiceServicer_to_server(servicer, server):
                     request_deserializer=sochdb__pb2.ContextQueryRequest.FromString,
                     response_serializer=sochdb__pb2.ContextQueryResponse.SerializeToString,
             ),
+            'WriteEpisode': grpc.unary_unary_rpc_method_handler(
+                    servicer.WriteEpisode,
+                    request_deserializer=sochdb__pb2.WriteEpisodeRequest.FromString,
+                    response_serializer=sochdb__pb2.WriteEpisodeResponse.SerializeToString,
+            ),
             'EstimateTokens': grpc.unary_unary_rpc_method_handler(
                     servicer.EstimateTokens,
                     request_deserializer=sochdb__pb2.EstimateTokensRequest.FromString,
@@ -1270,7 +1287,7 @@ def add_ContextServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class ContextService(object):
+class ContextService:
     """=============================================================================
     CONTEXT SERVICE
     =============================================================================
@@ -1295,6 +1312,33 @@ class ContextService(object):
             '/sochdb.v1.ContextService/Query',
             sochdb__pb2.ContextQueryRequest.SerializeToString,
             sochdb__pb2.ContextQueryResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def WriteEpisode(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/sochdb.v1.ContextService/WriteEpisode',
+            sochdb__pb2.WriteEpisodeRequest.SerializeToString,
+            sochdb__pb2.WriteEpisodeResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -1360,7 +1404,7 @@ class ContextService(object):
             _registered_method=True)
 
 
-class CollectionServiceStub(object):
+class CollectionServiceStub:
     """=============================================================================
     COLLECTION SERVICE
     =============================================================================
@@ -1416,7 +1460,7 @@ class CollectionServiceStub(object):
                 _registered_method=True)
 
 
-class CollectionServiceServicer(object):
+class CollectionServiceServicer:
     """=============================================================================
     COLLECTION SERVICE
     =============================================================================
@@ -1531,7 +1575,7 @@ def add_CollectionServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class CollectionService(object):
+class CollectionService:
     """=============================================================================
     COLLECTION SERVICE
     =============================================================================
@@ -1756,7 +1800,7 @@ class CollectionService(object):
             _registered_method=True)
 
 
-class NamespaceServiceStub(object):
+class NamespaceServiceStub:
     """=============================================================================
     NAMESPACE SERVICE
     =============================================================================
@@ -1797,7 +1841,7 @@ class NamespaceServiceStub(object):
                 _registered_method=True)
 
 
-class NamespaceServiceServicer(object):
+class NamespaceServiceServicer:
     """=============================================================================
     NAMESPACE SERVICE
     =============================================================================
@@ -1876,7 +1920,7 @@ def add_NamespaceServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class NamespaceService(object):
+class NamespaceService:
     """=============================================================================
     NAMESPACE SERVICE
     =============================================================================
@@ -2020,7 +2064,7 @@ class NamespaceService(object):
             _registered_method=True)
 
 
-class SemanticCacheServiceStub(object):
+class SemanticCacheServiceStub:
     """=============================================================================
     SEMANTIC CACHE SERVICE
     =============================================================================
@@ -2056,7 +2100,7 @@ class SemanticCacheServiceStub(object):
                 _registered_method=True)
 
 
-class SemanticCacheServiceServicer(object):
+class SemanticCacheServiceServicer:
     """=============================================================================
     SEMANTIC CACHE SERVICE
     =============================================================================
@@ -2123,7 +2167,7 @@ def add_SemanticCacheServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class SemanticCacheService(object):
+class SemanticCacheService:
     """=============================================================================
     SEMANTIC CACHE SERVICE
     =============================================================================
@@ -2240,7 +2284,7 @@ class SemanticCacheService(object):
             _registered_method=True)
 
 
-class TraceServiceStub(object):
+class TraceServiceStub:
     """=============================================================================
     TRACE SERVICE
     =============================================================================
@@ -2286,7 +2330,7 @@ class TraceServiceStub(object):
                 _registered_method=True)
 
 
-class TraceServiceServicer(object):
+class TraceServiceServicer:
     """=============================================================================
     TRACE SERVICE
     =============================================================================
@@ -2377,7 +2421,7 @@ def add_TraceServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class TraceService(object):
+class TraceService:
     """=============================================================================
     TRACE SERVICE
     =============================================================================
@@ -2548,7 +2592,7 @@ class TraceService(object):
             _registered_method=True)
 
 
-class CheckpointServiceStub(object):
+class CheckpointServiceStub:
     """=============================================================================
     CHECKPOINT SERVICE
     =============================================================================
@@ -2594,7 +2638,7 @@ class CheckpointServiceStub(object):
                 _registered_method=True)
 
 
-class CheckpointServiceServicer(object):
+class CheckpointServiceServicer:
     """=============================================================================
     CHECKPOINT SERVICE
     =============================================================================
@@ -2685,7 +2729,7 @@ def add_CheckpointServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class CheckpointService(object):
+class CheckpointService:
     """=============================================================================
     CHECKPOINT SERVICE
     =============================================================================
@@ -2856,7 +2900,7 @@ class CheckpointService(object):
             _registered_method=True)
 
 
-class McpServiceStub(object):
+class McpServiceStub:
     """=============================================================================
     MCP SERVICE
     =============================================================================
@@ -2897,7 +2941,7 @@ class McpServiceStub(object):
                 _registered_method=True)
 
 
-class McpServiceServicer(object):
+class McpServiceServicer:
     """=============================================================================
     MCP SERVICE
     =============================================================================
@@ -2976,7 +3020,7 @@ def add_McpServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class McpService(object):
+class McpService:
     """=============================================================================
     MCP SERVICE
     =============================================================================
@@ -3120,7 +3164,7 @@ class McpService(object):
             _registered_method=True)
 
 
-class KvServiceStub(object):
+class KvServiceStub:
     """=============================================================================
     KV SERVICE (Basic operations)
     =============================================================================
@@ -3166,7 +3210,7 @@ class KvServiceStub(object):
                 _registered_method=True)
 
 
-class KvServiceServicer(object):
+class KvServiceServicer:
     """=============================================================================
     KV SERVICE (Basic operations)
     =============================================================================
@@ -3257,7 +3301,7 @@ def add_KvServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class KvService(object):
+class KvService:
     """=============================================================================
     KV SERVICE (Basic operations)
     =============================================================================
@@ -3417,6 +3461,224 @@ class KvService(object):
             '/sochdb.v1.KvService/BatchPut',
             sochdb__pb2.KvBatchPutRequest.SerializeToString,
             sochdb__pb2.KvBatchPutResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+
+class SubscriptionServiceStub:
+    """=============================================================================
+    Subscription Service (Task 2 — Delta-evaluation subscription engine)
+    =============================================================================
+
+    """
+
+    def __init__(self, channel):
+        """Constructor.
+
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.Subscribe = channel.unary_stream(
+                '/sochdb.v1.SubscriptionService/Subscribe',
+                request_serializer=sochdb__pb2.SubscribeRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.SubscribeEvent.FromString,
+                _registered_method=True)
+        self.WatchKey = channel.unary_stream(
+                '/sochdb.v1.SubscriptionService/WatchKey',
+                request_serializer=sochdb__pb2.WatchKeyRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.WatchKeyEvent.FromString,
+                _registered_method=True)
+        self.ListSubscriptions = channel.unary_unary(
+                '/sochdb.v1.SubscriptionService/ListSubscriptions',
+                request_serializer=sochdb__pb2.ListSubscriptionsRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.ListSubscriptionsResponse.FromString,
+                _registered_method=True)
+        self.CancelSubscription = channel.unary_unary(
+                '/sochdb.v1.SubscriptionService/CancelSubscription',
+                request_serializer=sochdb__pb2.CancelSubscriptionRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.CancelSubscriptionResponse.FromString,
+                _registered_method=True)
+
+
+class SubscriptionServiceServicer:
+    """=============================================================================
+    Subscription Service (Task 2 — Delta-evaluation subscription engine)
+    =============================================================================
+
+    """
+
+    def Subscribe(self, request, context):
+        """Subscribe to CDC events with optional filters.
+        Returns a server-side stream of change events.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def WatchKey(self, request, context):
+        """Watch a specific key for changes.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ListSubscriptions(self, request, context):
+        """List active subscriptions.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def CancelSubscription(self, request, context):
+        """Cancel an active subscription (client can also just drop the stream).
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+
+def add_SubscriptionServiceServicer_to_server(servicer, server):
+    rpc_method_handlers = {
+            'Subscribe': grpc.unary_stream_rpc_method_handler(
+                    servicer.Subscribe,
+                    request_deserializer=sochdb__pb2.SubscribeRequest.FromString,
+                    response_serializer=sochdb__pb2.SubscribeEvent.SerializeToString,
+            ),
+            'WatchKey': grpc.unary_stream_rpc_method_handler(
+                    servicer.WatchKey,
+                    request_deserializer=sochdb__pb2.WatchKeyRequest.FromString,
+                    response_serializer=sochdb__pb2.WatchKeyEvent.SerializeToString,
+            ),
+            'ListSubscriptions': grpc.unary_unary_rpc_method_handler(
+                    servicer.ListSubscriptions,
+                    request_deserializer=sochdb__pb2.ListSubscriptionsRequest.FromString,
+                    response_serializer=sochdb__pb2.ListSubscriptionsResponse.SerializeToString,
+            ),
+            'CancelSubscription': grpc.unary_unary_rpc_method_handler(
+                    servicer.CancelSubscription,
+                    request_deserializer=sochdb__pb2.CancelSubscriptionRequest.FromString,
+                    response_serializer=sochdb__pb2.CancelSubscriptionResponse.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'sochdb.v1.SubscriptionService', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+    server.add_registered_method_handlers('sochdb.v1.SubscriptionService', rpc_method_handlers)
+
+
+ # This class is part of an EXPERIMENTAL API.
+class SubscriptionService:
+    """=============================================================================
+    Subscription Service (Task 2 — Delta-evaluation subscription engine)
+    =============================================================================
+
+    """
+
+    @staticmethod
+    def Subscribe(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(
+            request,
+            target,
+            '/sochdb.v1.SubscriptionService/Subscribe',
+            sochdb__pb2.SubscribeRequest.SerializeToString,
+            sochdb__pb2.SubscribeEvent.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def WatchKey(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(
+            request,
+            target,
+            '/sochdb.v1.SubscriptionService/WatchKey',
+            sochdb__pb2.WatchKeyRequest.SerializeToString,
+            sochdb__pb2.WatchKeyEvent.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ListSubscriptions(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/sochdb.v1.SubscriptionService/ListSubscriptions',
+            sochdb__pb2.ListSubscriptionsRequest.SerializeToString,
+            sochdb__pb2.ListSubscriptionsResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def CancelSubscription(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/sochdb.v1.SubscriptionService/CancelSubscription',
+            sochdb__pb2.CancelSubscriptionRequest.SerializeToString,
+            sochdb__pb2.CancelSubscriptionResponse.FromString,
             options,
             channel_credentials,
             insecure,

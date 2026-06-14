@@ -78,6 +78,16 @@ from .isolation import (
     create_namespace_manager,
 )
 
+from .agent_memory import (
+    AgentMemory,
+    AgentMemoryConfig,
+    ContextSectionType,
+    QueryLanes,
+    build_search_section,
+    build_ingest_section,
+    create_agent_memory,
+)
+
 __all__ = [
     # Extraction
     "Entity",
@@ -124,4 +134,12 @@ __all__ = [
     "InMemoryNamespaceBackend",
     "NamespaceManager",
     "create_namespace_manager",
+    # Agent memory (ContextService + sochdb-memory)
+    "AgentMemory",
+    "AgentMemoryConfig",
+    "ContextSectionType",
+    "QueryLanes",
+    "build_search_section",
+    "build_ingest_section",
+    "create_agent_memory",
 ]

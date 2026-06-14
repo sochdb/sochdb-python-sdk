@@ -32,7 +32,7 @@ Example (Server Mode):
     client.put_kv("key", b"value")
 """
 
-__version__ = "0.5.7"
+__version__ = "0.6.0"
 
 # Embedded mode (FFI)
 from .database import Database, Transaction, IsolationLevel
@@ -67,7 +67,26 @@ from .queue import (
 )
 
 # Server mode (gRPC/IPC)
-from .grpc_client import SochDBClient, SearchResult, Document, GraphNode, GraphEdge, TemporalEdge
+from .grpc_client import (
+    SochDBClient,
+    SearchResult,
+    Document,
+    GraphNode,
+    GraphEdge,
+    TemporalEdge,
+    ContextSectionResult,
+    ContextQueryResult,
+    EpisodeWriteResult,
+)
+from .memory import (
+    AgentMemory,
+    AgentMemoryConfig,
+    ContextSectionType,
+    QueryLanes,
+    build_search_section,
+    build_ingest_section,
+    create_agent_memory,
+)
 from .ipc_client import IpcClient
 from .studio import StudioAPIError, StudioClient, StudioEventIngestResult
 from .integrations import (
@@ -184,6 +203,17 @@ __all__ = [
     "Document",
     "GraphNode",
     "GraphEdge",
+    "TemporalEdge",
+    "ContextSectionResult",
+    "ContextQueryResult",
+    "EpisodeWriteResult",
+    "AgentMemory",
+    "AgentMemoryConfig",
+    "ContextSectionType",
+    "QueryLanes",
+    "build_search_section",
+    "build_ingest_section",
+    "create_agent_memory",
     "Query",
     "SQLQueryResult",
     
