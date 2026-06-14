@@ -3609,27 +3609,47 @@ results = client.search_collection(
 )
 ```
 
-### Context Service (Server Mode)
+### Context Service & Agent Memory (Server Mode)
+
+The gRPC `ContextService` backs **sochdb-memory**: write-time lexical recall, async vector enrichment, and exact-BPE context assembly.
 
 ```python
-# Query context for LLM
-context = client.query_context(
+from sochdb import SochDBClient, QueryLanes, create_agent_memory
+
+client = SochDBClient("localhost:50051")
+memory = create_agent_memory(client, namespace="agent-42", token_limit=4096)
+
+# Preferred ingest path (lexical index immediate, vector enrich async)
+result = memory.write_episode(
+    "Caroline went to the LGBTQ support group.",
+    metadata={"speaker": "Caroline"},
+)
+print(result.episode_id, result.lexical_indexed, result.enrichment_queued)
+
+# Retrieval lanes: lexical | three_lane | hybrid
+ctx = memory.search("LGBTQ support group", lanes=QueryLanes.THREE_LANE)
+print(ctx.context)
+print(f"Tokens used: {ctx.total_tokens}")
+
+# Low-level ContextService access
+from sochdb.memory import build_search_section, ContextSectionType
+
+result = client.query_context(
     session_id="session_123",
     sections=[
-        {"name": "system", "priority": 0, "type": "literal", 
-         "content": "You are a helpful assistant."},
-        {"name": "history", "priority": 1, "type": "recent", 
-         "table": "messages", "top_k": 10},
-        {"name": "knowledge", "priority": 2, "type": "search", 
-         "collection": "documents", "embedding": [...], "top_k": 5}
+        build_search_section("support group", lanes=QueryLanes.LEXICAL, namespace="agent-42"),
     ],
     token_limit=4096,
-    format="toon"
+    format="markdown",
 )
+print(result.context, result.total_tokens)
 
-print(context.text)
-print(f"Tokens used: {context.token_count}")
+tokens = client.estimate_tokens(result.context)
+formatted = client.format_context(result.context, format="toon")
 ```
+
+**SEARCH section options:** `lanes=lexical|three_lane|hybrid`, `namespace`  
+**GET section options:** `episode_text` (legacy ingest), `doc_id`
 
 ---
 

@@ -30,6 +30,7 @@ cargo build --release
 | `27_hosted_remote_smoke.py` | gRPC | Minimal hosted remote smoke test for SDK parity |
 | `28_crewai_knowledge_tools.py` | Embedded + CrewAI | CrewAI tools backed by SochDB knowledge search |
 | `29_crewai_remote_tools.py` | gRPC + CrewAI | CrewAI tools backed by a remote SochDB collection |
+| `30_agent_memory.py` | gRPC | Agent memory via ContextService (write_episode, lane search) |
 
 ## Running Examples
 

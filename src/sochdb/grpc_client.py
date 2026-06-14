@@ -8,6 +8,7 @@ The client is approximately ~200 lines of code, delegating all operations to the
 """
 
 from typing import Any, Dict, Iterator, List, Optional, Tuple
+import json
 import grpc
 from dataclasses import dataclass
 
@@ -54,6 +55,35 @@ class TemporalEdge:
     valid_from: int  # Unix timestamp (ms)
     valid_until: int  # Unix timestamp (ms), 0 = no expiry
     properties: Dict[str, str]
+
+
+@dataclass
+class ContextSectionResult:
+    """Per-section result from ContextService.Query."""
+    name: str
+    tokens_used: int
+    truncated: bool
+    content: str
+
+
+@dataclass
+class ContextQueryResult:
+    """Full response from ContextService.Query."""
+    context: str
+    total_tokens: int
+    section_results: List[ContextSectionResult]
+    error: str = ""
+
+
+@dataclass
+class EpisodeWriteResult:
+    """Response from ContextService.WriteEpisode."""
+    episode_id: int
+    t_created: int
+    lexical_indexed: bool
+    ingestion_lag_us: int
+    enrichment_queued: bool
+    error: str = ""
 
 
 class SochDBClient:
@@ -403,32 +433,115 @@ class SochDBClient:
         session_id: str,
         sections: List[Dict],
         token_limit: int = 2048,
-        format: str = "toon"
-    ) -> str:
-        """Assemble LLM context with token budget."""
+        format: str = "toon",
+        include_schema: bool = False,
+    ) -> ContextQueryResult:
+        """
+        Assemble LLM context with exact-BPE budget via sochdb-memory + ContextCompiler.
+
+        Section dict keys:
+          - name, priority, type (ContextSectionType enum int), query
+          - options: dict with lanes=lexical|three_lane|hybrid, namespace, episode_text, doc_id, ...
+        """
         stub = self._get_stub("ContextService")
         from . import sochdb_pb2
-        
+
         format_map = {"toon": 0, "json": 1, "markdown": 2, "text": 3}
-        
-        section_protos = [
-            sochdb_pb2.ContextSection(
-                name=s.get("name", ""),
-                priority=s.get("priority", 0),
-                section_type=s.get("type", 0),
-                query=s.get("query", "")
+
+        section_protos = []
+        for s in sections:
+            opts = s.get("options") or {}
+            section_protos.append(
+                sochdb_pb2.ContextSection(
+                    name=s.get("name", ""),
+                    priority=int(s.get("priority", 0)),
+                    section_type=int(s.get("type", 0)),
+                    query=s.get("query", ""),
+                    options={str(k): str(v) for k, v in opts.items()},
+                )
             )
-            for s in sections
-        ]
-        
-        response = stub.Query(sochdb_pb2.ContextQueryRequest(
-            session_id=session_id,
-            token_limit=token_limit,
-            sections=section_protos,
-            format=format_map.get(format, 0)
-        ))
-        
-        return response.context
+
+        response = stub.Query(
+            sochdb_pb2.ContextQueryRequest(
+                session_id=session_id,
+                token_limit=token_limit,
+                sections=section_protos,
+                format=format_map.get(format.lower(), 0),
+                include_schema=include_schema,
+            )
+        )
+
+        return ContextQueryResult(
+            context=response.context,
+            total_tokens=response.total_tokens,
+            section_results=[
+                ContextSectionResult(
+                    name=r.name,
+                    tokens_used=r.tokens_used,
+                    truncated=r.truncated,
+                    content=r.content,
+                )
+                for r in response.section_results
+            ],
+            error=response.error,
+        )
+
+    def write_episode(
+        self,
+        namespace: str,
+        text: str,
+        *,
+        t_valid_from: Optional[int] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> EpisodeWriteResult:
+        """
+        Ingest an episode into agent memory (write-time lexical + async vector enrich).
+        """
+        stub = self._get_stub("ContextService")
+        from . import sochdb_pb2
+
+        metadata_json = json.dumps(metadata) if metadata else ""
+        request = sochdb_pb2.WriteEpisodeRequest(
+            namespace=namespace,
+            text=text,
+            metadata_json=metadata_json,
+        )
+        if t_valid_from is not None:
+            request.t_valid_from = int(t_valid_from)
+
+        response = stub.WriteEpisode(request)
+        return EpisodeWriteResult(
+            episode_id=response.episode_id,
+            t_created=response.t_created,
+            lexical_indexed=response.lexical_indexed,
+            ingestion_lag_us=response.ingestion_lag_us,
+            enrichment_queued=response.enrichment_queued,
+            error=response.error,
+        )
+
+    def estimate_tokens(self, content: str, model: str = "") -> int:
+        """Exact BPE token count for content."""
+        stub = self._get_stub("ContextService")
+        from . import sochdb_pb2
+
+        response = stub.EstimateTokens(
+            sochdb_pb2.EstimateTokensRequest(content=content, model=model)
+        )
+        return int(response.token_count)
+
+    def format_context(self, content: str, format: str = "toon") -> str:
+        """Format assembled context (toon/json/markdown/text)."""
+        stub = self._get_stub("ContextService")
+        from . import sochdb_pb2
+
+        format_map = {"toon": 0, "json": 1, "markdown": 2, "text": 3}
+        response = stub.FormatContext(
+            sochdb_pb2.FormatContextRequest(
+                content=content,
+                format=format_map.get(format.lower(), 0),
+            )
+        )
+        return response.formatted
     
     # =========================================================================
     # Trace Operations (TraceService)

@@ -1076,7 +1076,21 @@ except Exception as e:
 
 section("25. gRPC Client — API Surface Validation")
 
-from sochdb import SochDBClient, SearchResult, Document, GraphNode, GraphEdge, TemporalEdge
+from sochdb import (
+    SochDBClient,
+    SearchResult,
+    Document,
+    GraphNode,
+    GraphEdge,
+    TemporalEdge,
+    ContextSectionResult,
+    ContextQueryResult,
+    EpisodeWriteResult,
+    AgentMemory,
+    QueryLanes,
+    build_search_section,
+    create_agent_memory,
+)
 import dataclasses
 
 # Validate data classes (use dataclasses.fields since hasattr doesn't work on class-level for fields without defaults)
@@ -1089,6 +1103,13 @@ check("GraphNode fields", _dc_fields(GraphNode) == {"id", "node_type", "properti
 check("GraphEdge fields", _dc_fields(GraphEdge) == {"from_id", "edge_type", "to_id", "properties"})
 check("TemporalEdge fields", _dc_fields(TemporalEdge) ==
       {"from_id", "edge_type", "to_id", "valid_from", "valid_until", "properties"})
+check("ContextSectionResult fields",
+      _dc_fields(ContextSectionResult) == {"name", "tokens_used", "truncated", "content"})
+check("ContextQueryResult fields",
+      _dc_fields(ContextQueryResult) == {"context", "total_tokens", "section_results", "error"})
+check("EpisodeWriteResult fields",
+      _dc_fields(EpisodeWriteResult) ==
+      {"episode_id", "t_created", "lexical_indexed", "ingestion_lag_us", "enrichment_queued", "error"})
 
 # Validate client can be constructed
 client = SochDBClient("localhost:50051")  # No actual connection yet (lazy)
@@ -1110,7 +1131,7 @@ grpc_methods = [
     # Cache
     "cache_get", "cache_put",
     # Context
-    "query_context",
+    "query_context", "write_episode", "estimate_tokens", "format_context",
     # Trace
     "start_trace", "start_span", "end_span",
     # Lifecycle
@@ -1183,7 +1204,26 @@ check("gRPC cache_get params",
 # Context
 sig = inspect.signature(client.query_context)
 check("gRPC query_context params",
-      all(p in sig.parameters for p in ["session_id", "sections", "token_limit"]))
+      all(p in sig.parameters for p in ["session_id", "sections", "token_limit", "format", "include_schema"]))
+check("gRPC query_context returns ContextQueryResult",
+      sig.return_annotation is ContextQueryResult)
+
+sig = inspect.signature(client.write_episode)
+check("gRPC write_episode params",
+      all(p in sig.parameters for p in ["namespace", "text", "t_valid_from", "metadata"]))
+
+sig = inspect.signature(client.estimate_tokens)
+check("gRPC estimate_tokens params", set(sig.parameters.keys()) == {"content", "model"})
+
+sig = inspect.signature(client.format_context)
+check("gRPC format_context params", set(sig.parameters.keys()) == {"content", "format"})
+
+# Agent memory helpers
+section = build_search_section("test query", lanes=QueryLanes.THREE_LANE, namespace="ns1")
+check("build_search_section lanes option",
+      section["options"]["lanes"] == QueryLanes.THREE_LANE and section["options"]["namespace"] == "ns1")
+memory = create_agent_memory(client, namespace="agent-test")
+check("AgentMemory factory", isinstance(memory, AgentMemory) and memory.namespace == "agent-test")
 
 # Trace
 sig = inspect.signature(client.start_trace)

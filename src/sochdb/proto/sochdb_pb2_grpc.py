@@ -3,9 +3,9 @@
 import grpc
 import warnings
 
-from proto import sochdb_pb2 as proto_dot_sochdb__pb2
+from . import sochdb_pb2 as sochdb__pb2
 
-GRPC_GENERATED_VERSION = '1.76.0'
+GRPC_GENERATED_VERSION = '1.81.0'
 GRPC_VERSION = grpc.__version__
 _version_not_supported = False
 
@@ -18,14 +18,14 @@ except ImportError:
 if _version_not_supported:
     raise RuntimeError(
         f'The grpc package installed is at version {GRPC_VERSION},'
-        + ' but the generated code in proto/sochdb_pb2_grpc.py depends on'
+        + ' but the generated code in sochdb_pb2_grpc.py depends on'
         + f' grpcio>={GRPC_GENERATED_VERSION}.'
         + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
         + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
     )
 
 
-class VectorIndexServiceStub(object):
+class VectorIndexServiceStub:
     """=============================================================================
     VECTOR INDEX SERVICE
     =============================================================================
@@ -46,47 +46,47 @@ class VectorIndexServiceStub(object):
         """
         self.CreateIndex = channel.unary_unary(
                 '/sochdb.v1.VectorIndexService/CreateIndex',
-                request_serializer=proto_dot_sochdb__pb2.CreateIndexRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.CreateIndexResponse.FromString,
+                request_serializer=sochdb__pb2.CreateIndexRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.CreateIndexResponse.FromString,
                 _registered_method=True)
         self.DropIndex = channel.unary_unary(
                 '/sochdb.v1.VectorIndexService/DropIndex',
-                request_serializer=proto_dot_sochdb__pb2.DropIndexRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.DropIndexResponse.FromString,
+                request_serializer=sochdb__pb2.DropIndexRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.DropIndexResponse.FromString,
                 _registered_method=True)
         self.InsertBatch = channel.unary_unary(
                 '/sochdb.v1.VectorIndexService/InsertBatch',
-                request_serializer=proto_dot_sochdb__pb2.InsertBatchRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.InsertBatchResponse.FromString,
+                request_serializer=sochdb__pb2.InsertBatchRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.InsertBatchResponse.FromString,
                 _registered_method=True)
         self.InsertStream = channel.stream_unary(
                 '/sochdb.v1.VectorIndexService/InsertStream',
-                request_serializer=proto_dot_sochdb__pb2.InsertStreamRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.InsertStreamResponse.FromString,
+                request_serializer=sochdb__pb2.InsertStreamRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.InsertStreamResponse.FromString,
                 _registered_method=True)
         self.Search = channel.unary_unary(
                 '/sochdb.v1.VectorIndexService/Search',
-                request_serializer=proto_dot_sochdb__pb2.SearchRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.SearchResponse.FromString,
+                request_serializer=sochdb__pb2.SearchRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.SearchResponse.FromString,
                 _registered_method=True)
         self.SearchBatch = channel.unary_unary(
                 '/sochdb.v1.VectorIndexService/SearchBatch',
-                request_serializer=proto_dot_sochdb__pb2.SearchBatchRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.SearchBatchResponse.FromString,
+                request_serializer=sochdb__pb2.SearchBatchRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.SearchBatchResponse.FromString,
                 _registered_method=True)
         self.GetStats = channel.unary_unary(
                 '/sochdb.v1.VectorIndexService/GetStats',
-                request_serializer=proto_dot_sochdb__pb2.GetStatsRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.GetStatsResponse.FromString,
+                request_serializer=sochdb__pb2.GetStatsRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.GetStatsResponse.FromString,
                 _registered_method=True)
         self.HealthCheck = channel.unary_unary(
                 '/sochdb.v1.VectorIndexService/HealthCheck',
-                request_serializer=proto_dot_sochdb__pb2.HealthCheckRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.HealthCheckResponse.FromString,
+                request_serializer=sochdb__pb2.HealthCheckRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.HealthCheckResponse.FromString,
                 _registered_method=True)
 
 
-class VectorIndexServiceServicer(object):
+class VectorIndexServiceServicer:
     """=============================================================================
     VECTOR INDEX SERVICE
     =============================================================================
@@ -160,43 +160,43 @@ def add_VectorIndexServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'CreateIndex': grpc.unary_unary_rpc_method_handler(
                     servicer.CreateIndex,
-                    request_deserializer=proto_dot_sochdb__pb2.CreateIndexRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.CreateIndexResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.CreateIndexRequest.FromString,
+                    response_serializer=sochdb__pb2.CreateIndexResponse.SerializeToString,
             ),
             'DropIndex': grpc.unary_unary_rpc_method_handler(
                     servicer.DropIndex,
-                    request_deserializer=proto_dot_sochdb__pb2.DropIndexRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.DropIndexResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.DropIndexRequest.FromString,
+                    response_serializer=sochdb__pb2.DropIndexResponse.SerializeToString,
             ),
             'InsertBatch': grpc.unary_unary_rpc_method_handler(
                     servicer.InsertBatch,
-                    request_deserializer=proto_dot_sochdb__pb2.InsertBatchRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.InsertBatchResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.InsertBatchRequest.FromString,
+                    response_serializer=sochdb__pb2.InsertBatchResponse.SerializeToString,
             ),
             'InsertStream': grpc.stream_unary_rpc_method_handler(
                     servicer.InsertStream,
-                    request_deserializer=proto_dot_sochdb__pb2.InsertStreamRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.InsertStreamResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.InsertStreamRequest.FromString,
+                    response_serializer=sochdb__pb2.InsertStreamResponse.SerializeToString,
             ),
             'Search': grpc.unary_unary_rpc_method_handler(
                     servicer.Search,
-                    request_deserializer=proto_dot_sochdb__pb2.SearchRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.SearchResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.SearchRequest.FromString,
+                    response_serializer=sochdb__pb2.SearchResponse.SerializeToString,
             ),
             'SearchBatch': grpc.unary_unary_rpc_method_handler(
                     servicer.SearchBatch,
-                    request_deserializer=proto_dot_sochdb__pb2.SearchBatchRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.SearchBatchResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.SearchBatchRequest.FromString,
+                    response_serializer=sochdb__pb2.SearchBatchResponse.SerializeToString,
             ),
             'GetStats': grpc.unary_unary_rpc_method_handler(
                     servicer.GetStats,
-                    request_deserializer=proto_dot_sochdb__pb2.GetStatsRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.GetStatsResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.GetStatsRequest.FromString,
+                    response_serializer=sochdb__pb2.GetStatsResponse.SerializeToString,
             ),
             'HealthCheck': grpc.unary_unary_rpc_method_handler(
                     servicer.HealthCheck,
-                    request_deserializer=proto_dot_sochdb__pb2.HealthCheckRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.HealthCheckResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.HealthCheckRequest.FromString,
+                    response_serializer=sochdb__pb2.HealthCheckResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -206,7 +206,7 @@ def add_VectorIndexServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class VectorIndexService(object):
+class VectorIndexService:
     """=============================================================================
     VECTOR INDEX SERVICE
     =============================================================================
@@ -234,8 +234,8 @@ class VectorIndexService(object):
             request,
             target,
             '/sochdb.v1.VectorIndexService/CreateIndex',
-            proto_dot_sochdb__pb2.CreateIndexRequest.SerializeToString,
-            proto_dot_sochdb__pb2.CreateIndexResponse.FromString,
+            sochdb__pb2.CreateIndexRequest.SerializeToString,
+            sochdb__pb2.CreateIndexResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -261,8 +261,8 @@ class VectorIndexService(object):
             request,
             target,
             '/sochdb.v1.VectorIndexService/DropIndex',
-            proto_dot_sochdb__pb2.DropIndexRequest.SerializeToString,
-            proto_dot_sochdb__pb2.DropIndexResponse.FromString,
+            sochdb__pb2.DropIndexRequest.SerializeToString,
+            sochdb__pb2.DropIndexResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -288,8 +288,8 @@ class VectorIndexService(object):
             request,
             target,
             '/sochdb.v1.VectorIndexService/InsertBatch',
-            proto_dot_sochdb__pb2.InsertBatchRequest.SerializeToString,
-            proto_dot_sochdb__pb2.InsertBatchResponse.FromString,
+            sochdb__pb2.InsertBatchRequest.SerializeToString,
+            sochdb__pb2.InsertBatchResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -315,8 +315,8 @@ class VectorIndexService(object):
             request_iterator,
             target,
             '/sochdb.v1.VectorIndexService/InsertStream',
-            proto_dot_sochdb__pb2.InsertStreamRequest.SerializeToString,
-            proto_dot_sochdb__pb2.InsertStreamResponse.FromString,
+            sochdb__pb2.InsertStreamRequest.SerializeToString,
+            sochdb__pb2.InsertStreamResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -342,8 +342,8 @@ class VectorIndexService(object):
             request,
             target,
             '/sochdb.v1.VectorIndexService/Search',
-            proto_dot_sochdb__pb2.SearchRequest.SerializeToString,
-            proto_dot_sochdb__pb2.SearchResponse.FromString,
+            sochdb__pb2.SearchRequest.SerializeToString,
+            sochdb__pb2.SearchResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -369,8 +369,8 @@ class VectorIndexService(object):
             request,
             target,
             '/sochdb.v1.VectorIndexService/SearchBatch',
-            proto_dot_sochdb__pb2.SearchBatchRequest.SerializeToString,
-            proto_dot_sochdb__pb2.SearchBatchResponse.FromString,
+            sochdb__pb2.SearchBatchRequest.SerializeToString,
+            sochdb__pb2.SearchBatchResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -396,8 +396,8 @@ class VectorIndexService(object):
             request,
             target,
             '/sochdb.v1.VectorIndexService/GetStats',
-            proto_dot_sochdb__pb2.GetStatsRequest.SerializeToString,
-            proto_dot_sochdb__pb2.GetStatsResponse.FromString,
+            sochdb__pb2.GetStatsRequest.SerializeToString,
+            sochdb__pb2.GetStatsResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -423,8 +423,8 @@ class VectorIndexService(object):
             request,
             target,
             '/sochdb.v1.VectorIndexService/HealthCheck',
-            proto_dot_sochdb__pb2.HealthCheckRequest.SerializeToString,
-            proto_dot_sochdb__pb2.HealthCheckResponse.FromString,
+            sochdb__pb2.HealthCheckRequest.SerializeToString,
+            sochdb__pb2.HealthCheckResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -436,7 +436,7 @@ class VectorIndexService(object):
             _registered_method=True)
 
 
-class GraphServiceStub(object):
+class GraphServiceStub:
     """=============================================================================
     GRAPH SERVICE
     =============================================================================
@@ -452,52 +452,62 @@ class GraphServiceStub(object):
         """
         self.AddNode = channel.unary_unary(
                 '/sochdb.v1.GraphService/AddNode',
-                request_serializer=proto_dot_sochdb__pb2.AddNodeRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.AddNodeResponse.FromString,
+                request_serializer=sochdb__pb2.AddNodeRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.AddNodeResponse.FromString,
                 _registered_method=True)
         self.GetNode = channel.unary_unary(
                 '/sochdb.v1.GraphService/GetNode',
-                request_serializer=proto_dot_sochdb__pb2.GetNodeRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.GetNodeResponse.FromString,
+                request_serializer=sochdb__pb2.GetNodeRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.GetNodeResponse.FromString,
                 _registered_method=True)
         self.DeleteNode = channel.unary_unary(
                 '/sochdb.v1.GraphService/DeleteNode',
-                request_serializer=proto_dot_sochdb__pb2.DeleteNodeRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.DeleteNodeResponse.FromString,
+                request_serializer=sochdb__pb2.DeleteNodeRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.DeleteNodeResponse.FromString,
                 _registered_method=True)
         self.AddEdge = channel.unary_unary(
                 '/sochdb.v1.GraphService/AddEdge',
-                request_serializer=proto_dot_sochdb__pb2.AddEdgeRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.AddEdgeResponse.FromString,
+                request_serializer=sochdb__pb2.AddEdgeRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.AddEdgeResponse.FromString,
                 _registered_method=True)
         self.GetEdges = channel.unary_unary(
                 '/sochdb.v1.GraphService/GetEdges',
-                request_serializer=proto_dot_sochdb__pb2.GetEdgesRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.GetEdgesResponse.FromString,
+                request_serializer=sochdb__pb2.GetEdgesRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.GetEdgesResponse.FromString,
                 _registered_method=True)
         self.DeleteEdge = channel.unary_unary(
                 '/sochdb.v1.GraphService/DeleteEdge',
-                request_serializer=proto_dot_sochdb__pb2.DeleteEdgeRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.DeleteEdgeResponse.FromString,
+                request_serializer=sochdb__pb2.DeleteEdgeRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.DeleteEdgeResponse.FromString,
                 _registered_method=True)
         self.Traverse = channel.unary_unary(
                 '/sochdb.v1.GraphService/Traverse',
-                request_serializer=proto_dot_sochdb__pb2.TraverseRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.TraverseResponse.FromString,
+                request_serializer=sochdb__pb2.TraverseRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.TraverseResponse.FromString,
                 _registered_method=True)
         self.ShortestPath = channel.unary_unary(
                 '/sochdb.v1.GraphService/ShortestPath',
-                request_serializer=proto_dot_sochdb__pb2.ShortestPathRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.ShortestPathResponse.FromString,
+                request_serializer=sochdb__pb2.ShortestPathRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.ShortestPathResponse.FromString,
                 _registered_method=True)
         self.GetNeighbors = channel.unary_unary(
                 '/sochdb.v1.GraphService/GetNeighbors',
-                request_serializer=proto_dot_sochdb__pb2.GetNeighborsRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.GetNeighborsResponse.FromString,
+                request_serializer=sochdb__pb2.GetNeighborsRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.GetNeighborsResponse.FromString,
+                _registered_method=True)
+        self.AddTemporalEdge = channel.unary_unary(
+                '/sochdb.v1.GraphService/AddTemporalEdge',
+                request_serializer=sochdb__pb2.AddTemporalEdgeRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.AddTemporalEdgeResponse.FromString,
+                _registered_method=True)
+        self.QueryTemporalGraph = channel.unary_unary(
+                '/sochdb.v1.GraphService/QueryTemporalGraph',
+                request_serializer=sochdb__pb2.QueryTemporalGraphRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.QueryTemporalGraphResponse.FromString,
                 _registered_method=True)
 
 
-class GraphServiceServicer(object):
+class GraphServiceServicer:
     """=============================================================================
     GRAPH SERVICE
     =============================================================================
@@ -568,53 +578,77 @@ class GraphServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def AddTemporalEdge(self, request, context):
+        """Add a temporal edge with validity interval
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def QueryTemporalGraph(self, request, context):
+        """Query temporal graph at specific point in time or range
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_GraphServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'AddNode': grpc.unary_unary_rpc_method_handler(
                     servicer.AddNode,
-                    request_deserializer=proto_dot_sochdb__pb2.AddNodeRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.AddNodeResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.AddNodeRequest.FromString,
+                    response_serializer=sochdb__pb2.AddNodeResponse.SerializeToString,
             ),
             'GetNode': grpc.unary_unary_rpc_method_handler(
                     servicer.GetNode,
-                    request_deserializer=proto_dot_sochdb__pb2.GetNodeRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.GetNodeResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.GetNodeRequest.FromString,
+                    response_serializer=sochdb__pb2.GetNodeResponse.SerializeToString,
             ),
             'DeleteNode': grpc.unary_unary_rpc_method_handler(
                     servicer.DeleteNode,
-                    request_deserializer=proto_dot_sochdb__pb2.DeleteNodeRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.DeleteNodeResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.DeleteNodeRequest.FromString,
+                    response_serializer=sochdb__pb2.DeleteNodeResponse.SerializeToString,
             ),
             'AddEdge': grpc.unary_unary_rpc_method_handler(
                     servicer.AddEdge,
-                    request_deserializer=proto_dot_sochdb__pb2.AddEdgeRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.AddEdgeResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.AddEdgeRequest.FromString,
+                    response_serializer=sochdb__pb2.AddEdgeResponse.SerializeToString,
             ),
             'GetEdges': grpc.unary_unary_rpc_method_handler(
                     servicer.GetEdges,
-                    request_deserializer=proto_dot_sochdb__pb2.GetEdgesRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.GetEdgesResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.GetEdgesRequest.FromString,
+                    response_serializer=sochdb__pb2.GetEdgesResponse.SerializeToString,
             ),
             'DeleteEdge': grpc.unary_unary_rpc_method_handler(
                     servicer.DeleteEdge,
-                    request_deserializer=proto_dot_sochdb__pb2.DeleteEdgeRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.DeleteEdgeResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.DeleteEdgeRequest.FromString,
+                    response_serializer=sochdb__pb2.DeleteEdgeResponse.SerializeToString,
             ),
             'Traverse': grpc.unary_unary_rpc_method_handler(
                     servicer.Traverse,
-                    request_deserializer=proto_dot_sochdb__pb2.TraverseRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.TraverseResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.TraverseRequest.FromString,
+                    response_serializer=sochdb__pb2.TraverseResponse.SerializeToString,
             ),
             'ShortestPath': grpc.unary_unary_rpc_method_handler(
                     servicer.ShortestPath,
-                    request_deserializer=proto_dot_sochdb__pb2.ShortestPathRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.ShortestPathResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.ShortestPathRequest.FromString,
+                    response_serializer=sochdb__pb2.ShortestPathResponse.SerializeToString,
             ),
             'GetNeighbors': grpc.unary_unary_rpc_method_handler(
                     servicer.GetNeighbors,
-                    request_deserializer=proto_dot_sochdb__pb2.GetNeighborsRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.GetNeighborsResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.GetNeighborsRequest.FromString,
+                    response_serializer=sochdb__pb2.GetNeighborsResponse.SerializeToString,
+            ),
+            'AddTemporalEdge': grpc.unary_unary_rpc_method_handler(
+                    servicer.AddTemporalEdge,
+                    request_deserializer=sochdb__pb2.AddTemporalEdgeRequest.FromString,
+                    response_serializer=sochdb__pb2.AddTemporalEdgeResponse.SerializeToString,
+            ),
+            'QueryTemporalGraph': grpc.unary_unary_rpc_method_handler(
+                    servicer.QueryTemporalGraph,
+                    request_deserializer=sochdb__pb2.QueryTemporalGraphRequest.FromString,
+                    response_serializer=sochdb__pb2.QueryTemporalGraphResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -624,7 +658,7 @@ def add_GraphServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class GraphService(object):
+class GraphService:
     """=============================================================================
     GRAPH SERVICE
     =============================================================================
@@ -647,8 +681,8 @@ class GraphService(object):
             request,
             target,
             '/sochdb.v1.GraphService/AddNode',
-            proto_dot_sochdb__pb2.AddNodeRequest.SerializeToString,
-            proto_dot_sochdb__pb2.AddNodeResponse.FromString,
+            sochdb__pb2.AddNodeRequest.SerializeToString,
+            sochdb__pb2.AddNodeResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -674,8 +708,8 @@ class GraphService(object):
             request,
             target,
             '/sochdb.v1.GraphService/GetNode',
-            proto_dot_sochdb__pb2.GetNodeRequest.SerializeToString,
-            proto_dot_sochdb__pb2.GetNodeResponse.FromString,
+            sochdb__pb2.GetNodeRequest.SerializeToString,
+            sochdb__pb2.GetNodeResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -701,8 +735,8 @@ class GraphService(object):
             request,
             target,
             '/sochdb.v1.GraphService/DeleteNode',
-            proto_dot_sochdb__pb2.DeleteNodeRequest.SerializeToString,
-            proto_dot_sochdb__pb2.DeleteNodeResponse.FromString,
+            sochdb__pb2.DeleteNodeRequest.SerializeToString,
+            sochdb__pb2.DeleteNodeResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -728,8 +762,8 @@ class GraphService(object):
             request,
             target,
             '/sochdb.v1.GraphService/AddEdge',
-            proto_dot_sochdb__pb2.AddEdgeRequest.SerializeToString,
-            proto_dot_sochdb__pb2.AddEdgeResponse.FromString,
+            sochdb__pb2.AddEdgeRequest.SerializeToString,
+            sochdb__pb2.AddEdgeResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -755,8 +789,8 @@ class GraphService(object):
             request,
             target,
             '/sochdb.v1.GraphService/GetEdges',
-            proto_dot_sochdb__pb2.GetEdgesRequest.SerializeToString,
-            proto_dot_sochdb__pb2.GetEdgesResponse.FromString,
+            sochdb__pb2.GetEdgesRequest.SerializeToString,
+            sochdb__pb2.GetEdgesResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -782,8 +816,8 @@ class GraphService(object):
             request,
             target,
             '/sochdb.v1.GraphService/DeleteEdge',
-            proto_dot_sochdb__pb2.DeleteEdgeRequest.SerializeToString,
-            proto_dot_sochdb__pb2.DeleteEdgeResponse.FromString,
+            sochdb__pb2.DeleteEdgeRequest.SerializeToString,
+            sochdb__pb2.DeleteEdgeResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -809,8 +843,8 @@ class GraphService(object):
             request,
             target,
             '/sochdb.v1.GraphService/Traverse',
-            proto_dot_sochdb__pb2.TraverseRequest.SerializeToString,
-            proto_dot_sochdb__pb2.TraverseResponse.FromString,
+            sochdb__pb2.TraverseRequest.SerializeToString,
+            sochdb__pb2.TraverseResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -836,8 +870,8 @@ class GraphService(object):
             request,
             target,
             '/sochdb.v1.GraphService/ShortestPath',
-            proto_dot_sochdb__pb2.ShortestPathRequest.SerializeToString,
-            proto_dot_sochdb__pb2.ShortestPathResponse.FromString,
+            sochdb__pb2.ShortestPathRequest.SerializeToString,
+            sochdb__pb2.ShortestPathResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -863,8 +897,62 @@ class GraphService(object):
             request,
             target,
             '/sochdb.v1.GraphService/GetNeighbors',
-            proto_dot_sochdb__pb2.GetNeighborsRequest.SerializeToString,
-            proto_dot_sochdb__pb2.GetNeighborsResponse.FromString,
+            sochdb__pb2.GetNeighborsRequest.SerializeToString,
+            sochdb__pb2.GetNeighborsResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def AddTemporalEdge(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/sochdb.v1.GraphService/AddTemporalEdge',
+            sochdb__pb2.AddTemporalEdgeRequest.SerializeToString,
+            sochdb__pb2.AddTemporalEdgeResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def QueryTemporalGraph(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/sochdb.v1.GraphService/QueryTemporalGraph',
+            sochdb__pb2.QueryTemporalGraphRequest.SerializeToString,
+            sochdb__pb2.QueryTemporalGraphResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -876,7 +964,7 @@ class GraphService(object):
             _registered_method=True)
 
 
-class PolicyServiceStub(object):
+class PolicyServiceStub:
     """=============================================================================
     POLICY SERVICE
     =============================================================================
@@ -892,27 +980,27 @@ class PolicyServiceStub(object):
         """
         self.RegisterPolicy = channel.unary_unary(
                 '/sochdb.v1.PolicyService/RegisterPolicy',
-                request_serializer=proto_dot_sochdb__pb2.RegisterPolicyRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.RegisterPolicyResponse.FromString,
+                request_serializer=sochdb__pb2.RegisterPolicyRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.RegisterPolicyResponse.FromString,
                 _registered_method=True)
         self.Evaluate = channel.unary_unary(
                 '/sochdb.v1.PolicyService/Evaluate',
-                request_serializer=proto_dot_sochdb__pb2.EvaluatePolicyRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.EvaluatePolicyResponse.FromString,
+                request_serializer=sochdb__pb2.EvaluatePolicyRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.EvaluatePolicyResponse.FromString,
                 _registered_method=True)
         self.ListPolicies = channel.unary_unary(
                 '/sochdb.v1.PolicyService/ListPolicies',
-                request_serializer=proto_dot_sochdb__pb2.ListPoliciesRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.ListPoliciesResponse.FromString,
+                request_serializer=sochdb__pb2.ListPoliciesRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.ListPoliciesResponse.FromString,
                 _registered_method=True)
         self.DeletePolicy = channel.unary_unary(
                 '/sochdb.v1.PolicyService/DeletePolicy',
-                request_serializer=proto_dot_sochdb__pb2.DeletePolicyRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.DeletePolicyResponse.FromString,
+                request_serializer=sochdb__pb2.DeletePolicyRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.DeletePolicyResponse.FromString,
                 _registered_method=True)
 
 
-class PolicyServiceServicer(object):
+class PolicyServiceServicer:
     """=============================================================================
     POLICY SERVICE
     =============================================================================
@@ -953,23 +1041,23 @@ def add_PolicyServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'RegisterPolicy': grpc.unary_unary_rpc_method_handler(
                     servicer.RegisterPolicy,
-                    request_deserializer=proto_dot_sochdb__pb2.RegisterPolicyRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.RegisterPolicyResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.RegisterPolicyRequest.FromString,
+                    response_serializer=sochdb__pb2.RegisterPolicyResponse.SerializeToString,
             ),
             'Evaluate': grpc.unary_unary_rpc_method_handler(
                     servicer.Evaluate,
-                    request_deserializer=proto_dot_sochdb__pb2.EvaluatePolicyRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.EvaluatePolicyResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.EvaluatePolicyRequest.FromString,
+                    response_serializer=sochdb__pb2.EvaluatePolicyResponse.SerializeToString,
             ),
             'ListPolicies': grpc.unary_unary_rpc_method_handler(
                     servicer.ListPolicies,
-                    request_deserializer=proto_dot_sochdb__pb2.ListPoliciesRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.ListPoliciesResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.ListPoliciesRequest.FromString,
+                    response_serializer=sochdb__pb2.ListPoliciesResponse.SerializeToString,
             ),
             'DeletePolicy': grpc.unary_unary_rpc_method_handler(
                     servicer.DeletePolicy,
-                    request_deserializer=proto_dot_sochdb__pb2.DeletePolicyRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.DeletePolicyResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.DeletePolicyRequest.FromString,
+                    response_serializer=sochdb__pb2.DeletePolicyResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -979,7 +1067,7 @@ def add_PolicyServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class PolicyService(object):
+class PolicyService:
     """=============================================================================
     POLICY SERVICE
     =============================================================================
@@ -1002,8 +1090,8 @@ class PolicyService(object):
             request,
             target,
             '/sochdb.v1.PolicyService/RegisterPolicy',
-            proto_dot_sochdb__pb2.RegisterPolicyRequest.SerializeToString,
-            proto_dot_sochdb__pb2.RegisterPolicyResponse.FromString,
+            sochdb__pb2.RegisterPolicyRequest.SerializeToString,
+            sochdb__pb2.RegisterPolicyResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -1029,8 +1117,8 @@ class PolicyService(object):
             request,
             target,
             '/sochdb.v1.PolicyService/Evaluate',
-            proto_dot_sochdb__pb2.EvaluatePolicyRequest.SerializeToString,
-            proto_dot_sochdb__pb2.EvaluatePolicyResponse.FromString,
+            sochdb__pb2.EvaluatePolicyRequest.SerializeToString,
+            sochdb__pb2.EvaluatePolicyResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -1056,8 +1144,8 @@ class PolicyService(object):
             request,
             target,
             '/sochdb.v1.PolicyService/ListPolicies',
-            proto_dot_sochdb__pb2.ListPoliciesRequest.SerializeToString,
-            proto_dot_sochdb__pb2.ListPoliciesResponse.FromString,
+            sochdb__pb2.ListPoliciesRequest.SerializeToString,
+            sochdb__pb2.ListPoliciesResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -1083,8 +1171,8 @@ class PolicyService(object):
             request,
             target,
             '/sochdb.v1.PolicyService/DeletePolicy',
-            proto_dot_sochdb__pb2.DeletePolicyRequest.SerializeToString,
-            proto_dot_sochdb__pb2.DeletePolicyResponse.FromString,
+            sochdb__pb2.DeletePolicyRequest.SerializeToString,
+            sochdb__pb2.DeletePolicyResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -1096,7 +1184,7 @@ class PolicyService(object):
             _registered_method=True)
 
 
-class ContextServiceStub(object):
+class ContextServiceStub:
     """=============================================================================
     CONTEXT SERVICE
     =============================================================================
@@ -1112,22 +1200,27 @@ class ContextServiceStub(object):
         """
         self.Query = channel.unary_unary(
                 '/sochdb.v1.ContextService/Query',
-                request_serializer=proto_dot_sochdb__pb2.ContextQueryRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.ContextQueryResponse.FromString,
+                request_serializer=sochdb__pb2.ContextQueryRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.ContextQueryResponse.FromString,
+                _registered_method=True)
+        self.WriteEpisode = channel.unary_unary(
+                '/sochdb.v1.ContextService/WriteEpisode',
+                request_serializer=sochdb__pb2.WriteEpisodeRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.WriteEpisodeResponse.FromString,
                 _registered_method=True)
         self.EstimateTokens = channel.unary_unary(
                 '/sochdb.v1.ContextService/EstimateTokens',
-                request_serializer=proto_dot_sochdb__pb2.EstimateTokensRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.EstimateTokensResponse.FromString,
+                request_serializer=sochdb__pb2.EstimateTokensRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.EstimateTokensResponse.FromString,
                 _registered_method=True)
         self.FormatContext = channel.unary_unary(
                 '/sochdb.v1.ContextService/FormatContext',
-                request_serializer=proto_dot_sochdb__pb2.FormatContextRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.FormatContextResponse.FromString,
+                request_serializer=sochdb__pb2.FormatContextRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.FormatContextResponse.FromString,
                 _registered_method=True)
 
 
-class ContextServiceServicer(object):
+class ContextServiceServicer:
     """=============================================================================
     CONTEXT SERVICE
     =============================================================================
@@ -1137,6 +1230,13 @@ class ContextServiceServicer(object):
 
     def Query(self, request, context):
         """Execute a context query
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def WriteEpisode(self, request, context):
+        """Ingest an episode into agent memory (write-time lexical index)
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -1161,18 +1261,23 @@ def add_ContextServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'Query': grpc.unary_unary_rpc_method_handler(
                     servicer.Query,
-                    request_deserializer=proto_dot_sochdb__pb2.ContextQueryRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.ContextQueryResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.ContextQueryRequest.FromString,
+                    response_serializer=sochdb__pb2.ContextQueryResponse.SerializeToString,
+            ),
+            'WriteEpisode': grpc.unary_unary_rpc_method_handler(
+                    servicer.WriteEpisode,
+                    request_deserializer=sochdb__pb2.WriteEpisodeRequest.FromString,
+                    response_serializer=sochdb__pb2.WriteEpisodeResponse.SerializeToString,
             ),
             'EstimateTokens': grpc.unary_unary_rpc_method_handler(
                     servicer.EstimateTokens,
-                    request_deserializer=proto_dot_sochdb__pb2.EstimateTokensRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.EstimateTokensResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.EstimateTokensRequest.FromString,
+                    response_serializer=sochdb__pb2.EstimateTokensResponse.SerializeToString,
             ),
             'FormatContext': grpc.unary_unary_rpc_method_handler(
                     servicer.FormatContext,
-                    request_deserializer=proto_dot_sochdb__pb2.FormatContextRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.FormatContextResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.FormatContextRequest.FromString,
+                    response_serializer=sochdb__pb2.FormatContextResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -1182,7 +1287,7 @@ def add_ContextServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class ContextService(object):
+class ContextService:
     """=============================================================================
     CONTEXT SERVICE
     =============================================================================
@@ -1205,8 +1310,35 @@ class ContextService(object):
             request,
             target,
             '/sochdb.v1.ContextService/Query',
-            proto_dot_sochdb__pb2.ContextQueryRequest.SerializeToString,
-            proto_dot_sochdb__pb2.ContextQueryResponse.FromString,
+            sochdb__pb2.ContextQueryRequest.SerializeToString,
+            sochdb__pb2.ContextQueryResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def WriteEpisode(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/sochdb.v1.ContextService/WriteEpisode',
+            sochdb__pb2.WriteEpisodeRequest.SerializeToString,
+            sochdb__pb2.WriteEpisodeResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -1232,8 +1364,8 @@ class ContextService(object):
             request,
             target,
             '/sochdb.v1.ContextService/EstimateTokens',
-            proto_dot_sochdb__pb2.EstimateTokensRequest.SerializeToString,
-            proto_dot_sochdb__pb2.EstimateTokensResponse.FromString,
+            sochdb__pb2.EstimateTokensRequest.SerializeToString,
+            sochdb__pb2.EstimateTokensResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -1259,8 +1391,8 @@ class ContextService(object):
             request,
             target,
             '/sochdb.v1.ContextService/FormatContext',
-            proto_dot_sochdb__pb2.FormatContextRequest.SerializeToString,
-            proto_dot_sochdb__pb2.FormatContextResponse.FromString,
+            sochdb__pb2.FormatContextRequest.SerializeToString,
+            sochdb__pb2.FormatContextResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -1272,7 +1404,7 @@ class ContextService(object):
             _registered_method=True)
 
 
-class CollectionServiceStub(object):
+class CollectionServiceStub:
     """=============================================================================
     COLLECTION SERVICE
     =============================================================================
@@ -1288,47 +1420,47 @@ class CollectionServiceStub(object):
         """
         self.CreateCollection = channel.unary_unary(
                 '/sochdb.v1.CollectionService/CreateCollection',
-                request_serializer=proto_dot_sochdb__pb2.CreateCollectionRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.CreateCollectionResponse.FromString,
+                request_serializer=sochdb__pb2.CreateCollectionRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.CreateCollectionResponse.FromString,
                 _registered_method=True)
         self.GetCollection = channel.unary_unary(
                 '/sochdb.v1.CollectionService/GetCollection',
-                request_serializer=proto_dot_sochdb__pb2.GetCollectionRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.GetCollectionResponse.FromString,
+                request_serializer=sochdb__pb2.GetCollectionRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.GetCollectionResponse.FromString,
                 _registered_method=True)
         self.ListCollections = channel.unary_unary(
                 '/sochdb.v1.CollectionService/ListCollections',
-                request_serializer=proto_dot_sochdb__pb2.ListCollectionsRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.ListCollectionsResponse.FromString,
+                request_serializer=sochdb__pb2.ListCollectionsRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.ListCollectionsResponse.FromString,
                 _registered_method=True)
         self.DeleteCollection = channel.unary_unary(
                 '/sochdb.v1.CollectionService/DeleteCollection',
-                request_serializer=proto_dot_sochdb__pb2.DeleteCollectionRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.DeleteCollectionResponse.FromString,
+                request_serializer=sochdb__pb2.DeleteCollectionRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.DeleteCollectionResponse.FromString,
                 _registered_method=True)
         self.AddDocuments = channel.unary_unary(
                 '/sochdb.v1.CollectionService/AddDocuments',
-                request_serializer=proto_dot_sochdb__pb2.AddDocumentsRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.AddDocumentsResponse.FromString,
+                request_serializer=sochdb__pb2.AddDocumentsRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.AddDocumentsResponse.FromString,
                 _registered_method=True)
         self.SearchCollection = channel.unary_unary(
                 '/sochdb.v1.CollectionService/SearchCollection',
-                request_serializer=proto_dot_sochdb__pb2.SearchCollectionRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.SearchCollectionResponse.FromString,
+                request_serializer=sochdb__pb2.SearchCollectionRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.SearchCollectionResponse.FromString,
                 _registered_method=True)
         self.GetDocument = channel.unary_unary(
                 '/sochdb.v1.CollectionService/GetDocument',
-                request_serializer=proto_dot_sochdb__pb2.GetDocumentRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.GetDocumentResponse.FromString,
+                request_serializer=sochdb__pb2.GetDocumentRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.GetDocumentResponse.FromString,
                 _registered_method=True)
         self.DeleteDocument = channel.unary_unary(
                 '/sochdb.v1.CollectionService/DeleteDocument',
-                request_serializer=proto_dot_sochdb__pb2.DeleteDocumentRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.DeleteDocumentResponse.FromString,
+                request_serializer=sochdb__pb2.DeleteDocumentRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.DeleteDocumentResponse.FromString,
                 _registered_method=True)
 
 
-class CollectionServiceServicer(object):
+class CollectionServiceServicer:
     """=============================================================================
     COLLECTION SERVICE
     =============================================================================
@@ -1397,43 +1529,43 @@ def add_CollectionServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'CreateCollection': grpc.unary_unary_rpc_method_handler(
                     servicer.CreateCollection,
-                    request_deserializer=proto_dot_sochdb__pb2.CreateCollectionRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.CreateCollectionResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.CreateCollectionRequest.FromString,
+                    response_serializer=sochdb__pb2.CreateCollectionResponse.SerializeToString,
             ),
             'GetCollection': grpc.unary_unary_rpc_method_handler(
                     servicer.GetCollection,
-                    request_deserializer=proto_dot_sochdb__pb2.GetCollectionRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.GetCollectionResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.GetCollectionRequest.FromString,
+                    response_serializer=sochdb__pb2.GetCollectionResponse.SerializeToString,
             ),
             'ListCollections': grpc.unary_unary_rpc_method_handler(
                     servicer.ListCollections,
-                    request_deserializer=proto_dot_sochdb__pb2.ListCollectionsRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.ListCollectionsResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.ListCollectionsRequest.FromString,
+                    response_serializer=sochdb__pb2.ListCollectionsResponse.SerializeToString,
             ),
             'DeleteCollection': grpc.unary_unary_rpc_method_handler(
                     servicer.DeleteCollection,
-                    request_deserializer=proto_dot_sochdb__pb2.DeleteCollectionRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.DeleteCollectionResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.DeleteCollectionRequest.FromString,
+                    response_serializer=sochdb__pb2.DeleteCollectionResponse.SerializeToString,
             ),
             'AddDocuments': grpc.unary_unary_rpc_method_handler(
                     servicer.AddDocuments,
-                    request_deserializer=proto_dot_sochdb__pb2.AddDocumentsRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.AddDocumentsResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.AddDocumentsRequest.FromString,
+                    response_serializer=sochdb__pb2.AddDocumentsResponse.SerializeToString,
             ),
             'SearchCollection': grpc.unary_unary_rpc_method_handler(
                     servicer.SearchCollection,
-                    request_deserializer=proto_dot_sochdb__pb2.SearchCollectionRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.SearchCollectionResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.SearchCollectionRequest.FromString,
+                    response_serializer=sochdb__pb2.SearchCollectionResponse.SerializeToString,
             ),
             'GetDocument': grpc.unary_unary_rpc_method_handler(
                     servicer.GetDocument,
-                    request_deserializer=proto_dot_sochdb__pb2.GetDocumentRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.GetDocumentResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.GetDocumentRequest.FromString,
+                    response_serializer=sochdb__pb2.GetDocumentResponse.SerializeToString,
             ),
             'DeleteDocument': grpc.unary_unary_rpc_method_handler(
                     servicer.DeleteDocument,
-                    request_deserializer=proto_dot_sochdb__pb2.DeleteDocumentRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.DeleteDocumentResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.DeleteDocumentRequest.FromString,
+                    response_serializer=sochdb__pb2.DeleteDocumentResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -1443,7 +1575,7 @@ def add_CollectionServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class CollectionService(object):
+class CollectionService:
     """=============================================================================
     COLLECTION SERVICE
     =============================================================================
@@ -1466,8 +1598,8 @@ class CollectionService(object):
             request,
             target,
             '/sochdb.v1.CollectionService/CreateCollection',
-            proto_dot_sochdb__pb2.CreateCollectionRequest.SerializeToString,
-            proto_dot_sochdb__pb2.CreateCollectionResponse.FromString,
+            sochdb__pb2.CreateCollectionRequest.SerializeToString,
+            sochdb__pb2.CreateCollectionResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -1493,8 +1625,8 @@ class CollectionService(object):
             request,
             target,
             '/sochdb.v1.CollectionService/GetCollection',
-            proto_dot_sochdb__pb2.GetCollectionRequest.SerializeToString,
-            proto_dot_sochdb__pb2.GetCollectionResponse.FromString,
+            sochdb__pb2.GetCollectionRequest.SerializeToString,
+            sochdb__pb2.GetCollectionResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -1520,8 +1652,8 @@ class CollectionService(object):
             request,
             target,
             '/sochdb.v1.CollectionService/ListCollections',
-            proto_dot_sochdb__pb2.ListCollectionsRequest.SerializeToString,
-            proto_dot_sochdb__pb2.ListCollectionsResponse.FromString,
+            sochdb__pb2.ListCollectionsRequest.SerializeToString,
+            sochdb__pb2.ListCollectionsResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -1547,8 +1679,8 @@ class CollectionService(object):
             request,
             target,
             '/sochdb.v1.CollectionService/DeleteCollection',
-            proto_dot_sochdb__pb2.DeleteCollectionRequest.SerializeToString,
-            proto_dot_sochdb__pb2.DeleteCollectionResponse.FromString,
+            sochdb__pb2.DeleteCollectionRequest.SerializeToString,
+            sochdb__pb2.DeleteCollectionResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -1574,8 +1706,8 @@ class CollectionService(object):
             request,
             target,
             '/sochdb.v1.CollectionService/AddDocuments',
-            proto_dot_sochdb__pb2.AddDocumentsRequest.SerializeToString,
-            proto_dot_sochdb__pb2.AddDocumentsResponse.FromString,
+            sochdb__pb2.AddDocumentsRequest.SerializeToString,
+            sochdb__pb2.AddDocumentsResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -1601,8 +1733,8 @@ class CollectionService(object):
             request,
             target,
             '/sochdb.v1.CollectionService/SearchCollection',
-            proto_dot_sochdb__pb2.SearchCollectionRequest.SerializeToString,
-            proto_dot_sochdb__pb2.SearchCollectionResponse.FromString,
+            sochdb__pb2.SearchCollectionRequest.SerializeToString,
+            sochdb__pb2.SearchCollectionResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -1628,8 +1760,8 @@ class CollectionService(object):
             request,
             target,
             '/sochdb.v1.CollectionService/GetDocument',
-            proto_dot_sochdb__pb2.GetDocumentRequest.SerializeToString,
-            proto_dot_sochdb__pb2.GetDocumentResponse.FromString,
+            sochdb__pb2.GetDocumentRequest.SerializeToString,
+            sochdb__pb2.GetDocumentResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -1655,8 +1787,8 @@ class CollectionService(object):
             request,
             target,
             '/sochdb.v1.CollectionService/DeleteDocument',
-            proto_dot_sochdb__pb2.DeleteDocumentRequest.SerializeToString,
-            proto_dot_sochdb__pb2.DeleteDocumentResponse.FromString,
+            sochdb__pb2.DeleteDocumentRequest.SerializeToString,
+            sochdb__pb2.DeleteDocumentResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -1668,7 +1800,7 @@ class CollectionService(object):
             _registered_method=True)
 
 
-class NamespaceServiceStub(object):
+class NamespaceServiceStub:
     """=============================================================================
     NAMESPACE SERVICE
     =============================================================================
@@ -1684,32 +1816,32 @@ class NamespaceServiceStub(object):
         """
         self.CreateNamespace = channel.unary_unary(
                 '/sochdb.v1.NamespaceService/CreateNamespace',
-                request_serializer=proto_dot_sochdb__pb2.CreateNamespaceRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.CreateNamespaceResponse.FromString,
+                request_serializer=sochdb__pb2.CreateNamespaceRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.CreateNamespaceResponse.FromString,
                 _registered_method=True)
         self.GetNamespace = channel.unary_unary(
                 '/sochdb.v1.NamespaceService/GetNamespace',
-                request_serializer=proto_dot_sochdb__pb2.GetNamespaceRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.GetNamespaceResponse.FromString,
+                request_serializer=sochdb__pb2.GetNamespaceRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.GetNamespaceResponse.FromString,
                 _registered_method=True)
         self.ListNamespaces = channel.unary_unary(
                 '/sochdb.v1.NamespaceService/ListNamespaces',
-                request_serializer=proto_dot_sochdb__pb2.ListNamespacesRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.ListNamespacesResponse.FromString,
+                request_serializer=sochdb__pb2.ListNamespacesRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.ListNamespacesResponse.FromString,
                 _registered_method=True)
         self.DeleteNamespace = channel.unary_unary(
                 '/sochdb.v1.NamespaceService/DeleteNamespace',
-                request_serializer=proto_dot_sochdb__pb2.DeleteNamespaceRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.DeleteNamespaceResponse.FromString,
+                request_serializer=sochdb__pb2.DeleteNamespaceRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.DeleteNamespaceResponse.FromString,
                 _registered_method=True)
         self.SetQuota = channel.unary_unary(
                 '/sochdb.v1.NamespaceService/SetQuota',
-                request_serializer=proto_dot_sochdb__pb2.SetQuotaRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.SetQuotaResponse.FromString,
+                request_serializer=sochdb__pb2.SetQuotaRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.SetQuotaResponse.FromString,
                 _registered_method=True)
 
 
-class NamespaceServiceServicer(object):
+class NamespaceServiceServicer:
     """=============================================================================
     NAMESPACE SERVICE
     =============================================================================
@@ -1757,28 +1889,28 @@ def add_NamespaceServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'CreateNamespace': grpc.unary_unary_rpc_method_handler(
                     servicer.CreateNamespace,
-                    request_deserializer=proto_dot_sochdb__pb2.CreateNamespaceRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.CreateNamespaceResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.CreateNamespaceRequest.FromString,
+                    response_serializer=sochdb__pb2.CreateNamespaceResponse.SerializeToString,
             ),
             'GetNamespace': grpc.unary_unary_rpc_method_handler(
                     servicer.GetNamespace,
-                    request_deserializer=proto_dot_sochdb__pb2.GetNamespaceRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.GetNamespaceResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.GetNamespaceRequest.FromString,
+                    response_serializer=sochdb__pb2.GetNamespaceResponse.SerializeToString,
             ),
             'ListNamespaces': grpc.unary_unary_rpc_method_handler(
                     servicer.ListNamespaces,
-                    request_deserializer=proto_dot_sochdb__pb2.ListNamespacesRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.ListNamespacesResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.ListNamespacesRequest.FromString,
+                    response_serializer=sochdb__pb2.ListNamespacesResponse.SerializeToString,
             ),
             'DeleteNamespace': grpc.unary_unary_rpc_method_handler(
                     servicer.DeleteNamespace,
-                    request_deserializer=proto_dot_sochdb__pb2.DeleteNamespaceRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.DeleteNamespaceResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.DeleteNamespaceRequest.FromString,
+                    response_serializer=sochdb__pb2.DeleteNamespaceResponse.SerializeToString,
             ),
             'SetQuota': grpc.unary_unary_rpc_method_handler(
                     servicer.SetQuota,
-                    request_deserializer=proto_dot_sochdb__pb2.SetQuotaRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.SetQuotaResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.SetQuotaRequest.FromString,
+                    response_serializer=sochdb__pb2.SetQuotaResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -1788,7 +1920,7 @@ def add_NamespaceServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class NamespaceService(object):
+class NamespaceService:
     """=============================================================================
     NAMESPACE SERVICE
     =============================================================================
@@ -1811,8 +1943,8 @@ class NamespaceService(object):
             request,
             target,
             '/sochdb.v1.NamespaceService/CreateNamespace',
-            proto_dot_sochdb__pb2.CreateNamespaceRequest.SerializeToString,
-            proto_dot_sochdb__pb2.CreateNamespaceResponse.FromString,
+            sochdb__pb2.CreateNamespaceRequest.SerializeToString,
+            sochdb__pb2.CreateNamespaceResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -1838,8 +1970,8 @@ class NamespaceService(object):
             request,
             target,
             '/sochdb.v1.NamespaceService/GetNamespace',
-            proto_dot_sochdb__pb2.GetNamespaceRequest.SerializeToString,
-            proto_dot_sochdb__pb2.GetNamespaceResponse.FromString,
+            sochdb__pb2.GetNamespaceRequest.SerializeToString,
+            sochdb__pb2.GetNamespaceResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -1865,8 +1997,8 @@ class NamespaceService(object):
             request,
             target,
             '/sochdb.v1.NamespaceService/ListNamespaces',
-            proto_dot_sochdb__pb2.ListNamespacesRequest.SerializeToString,
-            proto_dot_sochdb__pb2.ListNamespacesResponse.FromString,
+            sochdb__pb2.ListNamespacesRequest.SerializeToString,
+            sochdb__pb2.ListNamespacesResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -1892,8 +2024,8 @@ class NamespaceService(object):
             request,
             target,
             '/sochdb.v1.NamespaceService/DeleteNamespace',
-            proto_dot_sochdb__pb2.DeleteNamespaceRequest.SerializeToString,
-            proto_dot_sochdb__pb2.DeleteNamespaceResponse.FromString,
+            sochdb__pb2.DeleteNamespaceRequest.SerializeToString,
+            sochdb__pb2.DeleteNamespaceResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -1919,8 +2051,8 @@ class NamespaceService(object):
             request,
             target,
             '/sochdb.v1.NamespaceService/SetQuota',
-            proto_dot_sochdb__pb2.SetQuotaRequest.SerializeToString,
-            proto_dot_sochdb__pb2.SetQuotaResponse.FromString,
+            sochdb__pb2.SetQuotaRequest.SerializeToString,
+            sochdb__pb2.SetQuotaResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -1932,7 +2064,7 @@ class NamespaceService(object):
             _registered_method=True)
 
 
-class SemanticCacheServiceStub(object):
+class SemanticCacheServiceStub:
     """=============================================================================
     SEMANTIC CACHE SERVICE
     =============================================================================
@@ -1948,27 +2080,27 @@ class SemanticCacheServiceStub(object):
         """
         self.Get = channel.unary_unary(
                 '/sochdb.v1.SemanticCacheService/Get',
-                request_serializer=proto_dot_sochdb__pb2.SemanticCacheGetRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.SemanticCacheGetResponse.FromString,
+                request_serializer=sochdb__pb2.SemanticCacheGetRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.SemanticCacheGetResponse.FromString,
                 _registered_method=True)
         self.Put = channel.unary_unary(
                 '/sochdb.v1.SemanticCacheService/Put',
-                request_serializer=proto_dot_sochdb__pb2.SemanticCachePutRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.SemanticCachePutResponse.FromString,
+                request_serializer=sochdb__pb2.SemanticCachePutRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.SemanticCachePutResponse.FromString,
                 _registered_method=True)
         self.Invalidate = channel.unary_unary(
                 '/sochdb.v1.SemanticCacheService/Invalidate',
-                request_serializer=proto_dot_sochdb__pb2.SemanticCacheInvalidateRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.SemanticCacheInvalidateResponse.FromString,
+                request_serializer=sochdb__pb2.SemanticCacheInvalidateRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.SemanticCacheInvalidateResponse.FromString,
                 _registered_method=True)
         self.GetStats = channel.unary_unary(
                 '/sochdb.v1.SemanticCacheService/GetStats',
-                request_serializer=proto_dot_sochdb__pb2.SemanticCacheStatsRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.SemanticCacheStatsResponse.FromString,
+                request_serializer=sochdb__pb2.SemanticCacheStatsRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.SemanticCacheStatsResponse.FromString,
                 _registered_method=True)
 
 
-class SemanticCacheServiceServicer(object):
+class SemanticCacheServiceServicer:
     """=============================================================================
     SEMANTIC CACHE SERVICE
     =============================================================================
@@ -2009,23 +2141,23 @@ def add_SemanticCacheServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'Get': grpc.unary_unary_rpc_method_handler(
                     servicer.Get,
-                    request_deserializer=proto_dot_sochdb__pb2.SemanticCacheGetRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.SemanticCacheGetResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.SemanticCacheGetRequest.FromString,
+                    response_serializer=sochdb__pb2.SemanticCacheGetResponse.SerializeToString,
             ),
             'Put': grpc.unary_unary_rpc_method_handler(
                     servicer.Put,
-                    request_deserializer=proto_dot_sochdb__pb2.SemanticCachePutRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.SemanticCachePutResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.SemanticCachePutRequest.FromString,
+                    response_serializer=sochdb__pb2.SemanticCachePutResponse.SerializeToString,
             ),
             'Invalidate': grpc.unary_unary_rpc_method_handler(
                     servicer.Invalidate,
-                    request_deserializer=proto_dot_sochdb__pb2.SemanticCacheInvalidateRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.SemanticCacheInvalidateResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.SemanticCacheInvalidateRequest.FromString,
+                    response_serializer=sochdb__pb2.SemanticCacheInvalidateResponse.SerializeToString,
             ),
             'GetStats': grpc.unary_unary_rpc_method_handler(
                     servicer.GetStats,
-                    request_deserializer=proto_dot_sochdb__pb2.SemanticCacheStatsRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.SemanticCacheStatsResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.SemanticCacheStatsRequest.FromString,
+                    response_serializer=sochdb__pb2.SemanticCacheStatsResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -2035,7 +2167,7 @@ def add_SemanticCacheServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class SemanticCacheService(object):
+class SemanticCacheService:
     """=============================================================================
     SEMANTIC CACHE SERVICE
     =============================================================================
@@ -2058,8 +2190,8 @@ class SemanticCacheService(object):
             request,
             target,
             '/sochdb.v1.SemanticCacheService/Get',
-            proto_dot_sochdb__pb2.SemanticCacheGetRequest.SerializeToString,
-            proto_dot_sochdb__pb2.SemanticCacheGetResponse.FromString,
+            sochdb__pb2.SemanticCacheGetRequest.SerializeToString,
+            sochdb__pb2.SemanticCacheGetResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -2085,8 +2217,8 @@ class SemanticCacheService(object):
             request,
             target,
             '/sochdb.v1.SemanticCacheService/Put',
-            proto_dot_sochdb__pb2.SemanticCachePutRequest.SerializeToString,
-            proto_dot_sochdb__pb2.SemanticCachePutResponse.FromString,
+            sochdb__pb2.SemanticCachePutRequest.SerializeToString,
+            sochdb__pb2.SemanticCachePutResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -2112,8 +2244,8 @@ class SemanticCacheService(object):
             request,
             target,
             '/sochdb.v1.SemanticCacheService/Invalidate',
-            proto_dot_sochdb__pb2.SemanticCacheInvalidateRequest.SerializeToString,
-            proto_dot_sochdb__pb2.SemanticCacheInvalidateResponse.FromString,
+            sochdb__pb2.SemanticCacheInvalidateRequest.SerializeToString,
+            sochdb__pb2.SemanticCacheInvalidateResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -2139,8 +2271,8 @@ class SemanticCacheService(object):
             request,
             target,
             '/sochdb.v1.SemanticCacheService/GetStats',
-            proto_dot_sochdb__pb2.SemanticCacheStatsRequest.SerializeToString,
-            proto_dot_sochdb__pb2.SemanticCacheStatsResponse.FromString,
+            sochdb__pb2.SemanticCacheStatsRequest.SerializeToString,
+            sochdb__pb2.SemanticCacheStatsResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -2152,7 +2284,7 @@ class SemanticCacheService(object):
             _registered_method=True)
 
 
-class TraceServiceStub(object):
+class TraceServiceStub:
     """=============================================================================
     TRACE SERVICE
     =============================================================================
@@ -2168,37 +2300,37 @@ class TraceServiceStub(object):
         """
         self.StartTrace = channel.unary_unary(
                 '/sochdb.v1.TraceService/StartTrace',
-                request_serializer=proto_dot_sochdb__pb2.StartTraceRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.StartTraceResponse.FromString,
+                request_serializer=sochdb__pb2.StartTraceRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.StartTraceResponse.FromString,
                 _registered_method=True)
         self.StartSpan = channel.unary_unary(
                 '/sochdb.v1.TraceService/StartSpan',
-                request_serializer=proto_dot_sochdb__pb2.StartSpanRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.StartSpanResponse.FromString,
+                request_serializer=sochdb__pb2.StartSpanRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.StartSpanResponse.FromString,
                 _registered_method=True)
         self.EndSpan = channel.unary_unary(
                 '/sochdb.v1.TraceService/EndSpan',
-                request_serializer=proto_dot_sochdb__pb2.EndSpanRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.EndSpanResponse.FromString,
+                request_serializer=sochdb__pb2.EndSpanRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.EndSpanResponse.FromString,
                 _registered_method=True)
         self.AddEvent = channel.unary_unary(
                 '/sochdb.v1.TraceService/AddEvent',
-                request_serializer=proto_dot_sochdb__pb2.AddEventRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.AddEventResponse.FromString,
+                request_serializer=sochdb__pb2.AddEventRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.AddEventResponse.FromString,
                 _registered_method=True)
         self.GetTrace = channel.unary_unary(
                 '/sochdb.v1.TraceService/GetTrace',
-                request_serializer=proto_dot_sochdb__pb2.GetTraceRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.GetTraceResponse.FromString,
+                request_serializer=sochdb__pb2.GetTraceRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.GetTraceResponse.FromString,
                 _registered_method=True)
         self.ListTraces = channel.unary_unary(
                 '/sochdb.v1.TraceService/ListTraces',
-                request_serializer=proto_dot_sochdb__pb2.ListTracesRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.ListTracesResponse.FromString,
+                request_serializer=sochdb__pb2.ListTracesRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.ListTracesResponse.FromString,
                 _registered_method=True)
 
 
-class TraceServiceServicer(object):
+class TraceServiceServicer:
     """=============================================================================
     TRACE SERVICE
     =============================================================================
@@ -2253,33 +2385,33 @@ def add_TraceServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'StartTrace': grpc.unary_unary_rpc_method_handler(
                     servicer.StartTrace,
-                    request_deserializer=proto_dot_sochdb__pb2.StartTraceRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.StartTraceResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.StartTraceRequest.FromString,
+                    response_serializer=sochdb__pb2.StartTraceResponse.SerializeToString,
             ),
             'StartSpan': grpc.unary_unary_rpc_method_handler(
                     servicer.StartSpan,
-                    request_deserializer=proto_dot_sochdb__pb2.StartSpanRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.StartSpanResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.StartSpanRequest.FromString,
+                    response_serializer=sochdb__pb2.StartSpanResponse.SerializeToString,
             ),
             'EndSpan': grpc.unary_unary_rpc_method_handler(
                     servicer.EndSpan,
-                    request_deserializer=proto_dot_sochdb__pb2.EndSpanRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.EndSpanResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.EndSpanRequest.FromString,
+                    response_serializer=sochdb__pb2.EndSpanResponse.SerializeToString,
             ),
             'AddEvent': grpc.unary_unary_rpc_method_handler(
                     servicer.AddEvent,
-                    request_deserializer=proto_dot_sochdb__pb2.AddEventRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.AddEventResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.AddEventRequest.FromString,
+                    response_serializer=sochdb__pb2.AddEventResponse.SerializeToString,
             ),
             'GetTrace': grpc.unary_unary_rpc_method_handler(
                     servicer.GetTrace,
-                    request_deserializer=proto_dot_sochdb__pb2.GetTraceRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.GetTraceResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.GetTraceRequest.FromString,
+                    response_serializer=sochdb__pb2.GetTraceResponse.SerializeToString,
             ),
             'ListTraces': grpc.unary_unary_rpc_method_handler(
                     servicer.ListTraces,
-                    request_deserializer=proto_dot_sochdb__pb2.ListTracesRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.ListTracesResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.ListTracesRequest.FromString,
+                    response_serializer=sochdb__pb2.ListTracesResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -2289,7 +2421,7 @@ def add_TraceServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class TraceService(object):
+class TraceService:
     """=============================================================================
     TRACE SERVICE
     =============================================================================
@@ -2312,8 +2444,8 @@ class TraceService(object):
             request,
             target,
             '/sochdb.v1.TraceService/StartTrace',
-            proto_dot_sochdb__pb2.StartTraceRequest.SerializeToString,
-            proto_dot_sochdb__pb2.StartTraceResponse.FromString,
+            sochdb__pb2.StartTraceRequest.SerializeToString,
+            sochdb__pb2.StartTraceResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -2339,8 +2471,8 @@ class TraceService(object):
             request,
             target,
             '/sochdb.v1.TraceService/StartSpan',
-            proto_dot_sochdb__pb2.StartSpanRequest.SerializeToString,
-            proto_dot_sochdb__pb2.StartSpanResponse.FromString,
+            sochdb__pb2.StartSpanRequest.SerializeToString,
+            sochdb__pb2.StartSpanResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -2366,8 +2498,8 @@ class TraceService(object):
             request,
             target,
             '/sochdb.v1.TraceService/EndSpan',
-            proto_dot_sochdb__pb2.EndSpanRequest.SerializeToString,
-            proto_dot_sochdb__pb2.EndSpanResponse.FromString,
+            sochdb__pb2.EndSpanRequest.SerializeToString,
+            sochdb__pb2.EndSpanResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -2393,8 +2525,8 @@ class TraceService(object):
             request,
             target,
             '/sochdb.v1.TraceService/AddEvent',
-            proto_dot_sochdb__pb2.AddEventRequest.SerializeToString,
-            proto_dot_sochdb__pb2.AddEventResponse.FromString,
+            sochdb__pb2.AddEventRequest.SerializeToString,
+            sochdb__pb2.AddEventResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -2420,8 +2552,8 @@ class TraceService(object):
             request,
             target,
             '/sochdb.v1.TraceService/GetTrace',
-            proto_dot_sochdb__pb2.GetTraceRequest.SerializeToString,
-            proto_dot_sochdb__pb2.GetTraceResponse.FromString,
+            sochdb__pb2.GetTraceRequest.SerializeToString,
+            sochdb__pb2.GetTraceResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -2447,8 +2579,8 @@ class TraceService(object):
             request,
             target,
             '/sochdb.v1.TraceService/ListTraces',
-            proto_dot_sochdb__pb2.ListTracesRequest.SerializeToString,
-            proto_dot_sochdb__pb2.ListTracesResponse.FromString,
+            sochdb__pb2.ListTracesRequest.SerializeToString,
+            sochdb__pb2.ListTracesResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -2460,7 +2592,7 @@ class TraceService(object):
             _registered_method=True)
 
 
-class CheckpointServiceStub(object):
+class CheckpointServiceStub:
     """=============================================================================
     CHECKPOINT SERVICE
     =============================================================================
@@ -2476,37 +2608,37 @@ class CheckpointServiceStub(object):
         """
         self.CreateCheckpoint = channel.unary_unary(
                 '/sochdb.v1.CheckpointService/CreateCheckpoint',
-                request_serializer=proto_dot_sochdb__pb2.CreateCheckpointRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.CreateCheckpointResponse.FromString,
+                request_serializer=sochdb__pb2.CreateCheckpointRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.CreateCheckpointResponse.FromString,
                 _registered_method=True)
         self.RestoreCheckpoint = channel.unary_unary(
                 '/sochdb.v1.CheckpointService/RestoreCheckpoint',
-                request_serializer=proto_dot_sochdb__pb2.RestoreCheckpointRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.RestoreCheckpointResponse.FromString,
+                request_serializer=sochdb__pb2.RestoreCheckpointRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.RestoreCheckpointResponse.FromString,
                 _registered_method=True)
         self.ListCheckpoints = channel.unary_unary(
                 '/sochdb.v1.CheckpointService/ListCheckpoints',
-                request_serializer=proto_dot_sochdb__pb2.ListCheckpointsRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.ListCheckpointsResponse.FromString,
+                request_serializer=sochdb__pb2.ListCheckpointsRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.ListCheckpointsResponse.FromString,
                 _registered_method=True)
         self.DeleteCheckpoint = channel.unary_unary(
                 '/sochdb.v1.CheckpointService/DeleteCheckpoint',
-                request_serializer=proto_dot_sochdb__pb2.DeleteCheckpointRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.DeleteCheckpointResponse.FromString,
+                request_serializer=sochdb__pb2.DeleteCheckpointRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.DeleteCheckpointResponse.FromString,
                 _registered_method=True)
         self.ExportCheckpoint = channel.unary_unary(
                 '/sochdb.v1.CheckpointService/ExportCheckpoint',
-                request_serializer=proto_dot_sochdb__pb2.ExportCheckpointRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.ExportCheckpointResponse.FromString,
+                request_serializer=sochdb__pb2.ExportCheckpointRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.ExportCheckpointResponse.FromString,
                 _registered_method=True)
         self.ImportCheckpoint = channel.unary_unary(
                 '/sochdb.v1.CheckpointService/ImportCheckpoint',
-                request_serializer=proto_dot_sochdb__pb2.ImportCheckpointRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.ImportCheckpointResponse.FromString,
+                request_serializer=sochdb__pb2.ImportCheckpointRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.ImportCheckpointResponse.FromString,
                 _registered_method=True)
 
 
-class CheckpointServiceServicer(object):
+class CheckpointServiceServicer:
     """=============================================================================
     CHECKPOINT SERVICE
     =============================================================================
@@ -2561,33 +2693,33 @@ def add_CheckpointServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'CreateCheckpoint': grpc.unary_unary_rpc_method_handler(
                     servicer.CreateCheckpoint,
-                    request_deserializer=proto_dot_sochdb__pb2.CreateCheckpointRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.CreateCheckpointResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.CreateCheckpointRequest.FromString,
+                    response_serializer=sochdb__pb2.CreateCheckpointResponse.SerializeToString,
             ),
             'RestoreCheckpoint': grpc.unary_unary_rpc_method_handler(
                     servicer.RestoreCheckpoint,
-                    request_deserializer=proto_dot_sochdb__pb2.RestoreCheckpointRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.RestoreCheckpointResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.RestoreCheckpointRequest.FromString,
+                    response_serializer=sochdb__pb2.RestoreCheckpointResponse.SerializeToString,
             ),
             'ListCheckpoints': grpc.unary_unary_rpc_method_handler(
                     servicer.ListCheckpoints,
-                    request_deserializer=proto_dot_sochdb__pb2.ListCheckpointsRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.ListCheckpointsResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.ListCheckpointsRequest.FromString,
+                    response_serializer=sochdb__pb2.ListCheckpointsResponse.SerializeToString,
             ),
             'DeleteCheckpoint': grpc.unary_unary_rpc_method_handler(
                     servicer.DeleteCheckpoint,
-                    request_deserializer=proto_dot_sochdb__pb2.DeleteCheckpointRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.DeleteCheckpointResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.DeleteCheckpointRequest.FromString,
+                    response_serializer=sochdb__pb2.DeleteCheckpointResponse.SerializeToString,
             ),
             'ExportCheckpoint': grpc.unary_unary_rpc_method_handler(
                     servicer.ExportCheckpoint,
-                    request_deserializer=proto_dot_sochdb__pb2.ExportCheckpointRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.ExportCheckpointResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.ExportCheckpointRequest.FromString,
+                    response_serializer=sochdb__pb2.ExportCheckpointResponse.SerializeToString,
             ),
             'ImportCheckpoint': grpc.unary_unary_rpc_method_handler(
                     servicer.ImportCheckpoint,
-                    request_deserializer=proto_dot_sochdb__pb2.ImportCheckpointRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.ImportCheckpointResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.ImportCheckpointRequest.FromString,
+                    response_serializer=sochdb__pb2.ImportCheckpointResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -2597,7 +2729,7 @@ def add_CheckpointServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class CheckpointService(object):
+class CheckpointService:
     """=============================================================================
     CHECKPOINT SERVICE
     =============================================================================
@@ -2620,8 +2752,8 @@ class CheckpointService(object):
             request,
             target,
             '/sochdb.v1.CheckpointService/CreateCheckpoint',
-            proto_dot_sochdb__pb2.CreateCheckpointRequest.SerializeToString,
-            proto_dot_sochdb__pb2.CreateCheckpointResponse.FromString,
+            sochdb__pb2.CreateCheckpointRequest.SerializeToString,
+            sochdb__pb2.CreateCheckpointResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -2647,8 +2779,8 @@ class CheckpointService(object):
             request,
             target,
             '/sochdb.v1.CheckpointService/RestoreCheckpoint',
-            proto_dot_sochdb__pb2.RestoreCheckpointRequest.SerializeToString,
-            proto_dot_sochdb__pb2.RestoreCheckpointResponse.FromString,
+            sochdb__pb2.RestoreCheckpointRequest.SerializeToString,
+            sochdb__pb2.RestoreCheckpointResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -2674,8 +2806,8 @@ class CheckpointService(object):
             request,
             target,
             '/sochdb.v1.CheckpointService/ListCheckpoints',
-            proto_dot_sochdb__pb2.ListCheckpointsRequest.SerializeToString,
-            proto_dot_sochdb__pb2.ListCheckpointsResponse.FromString,
+            sochdb__pb2.ListCheckpointsRequest.SerializeToString,
+            sochdb__pb2.ListCheckpointsResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -2701,8 +2833,8 @@ class CheckpointService(object):
             request,
             target,
             '/sochdb.v1.CheckpointService/DeleteCheckpoint',
-            proto_dot_sochdb__pb2.DeleteCheckpointRequest.SerializeToString,
-            proto_dot_sochdb__pb2.DeleteCheckpointResponse.FromString,
+            sochdb__pb2.DeleteCheckpointRequest.SerializeToString,
+            sochdb__pb2.DeleteCheckpointResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -2728,8 +2860,8 @@ class CheckpointService(object):
             request,
             target,
             '/sochdb.v1.CheckpointService/ExportCheckpoint',
-            proto_dot_sochdb__pb2.ExportCheckpointRequest.SerializeToString,
-            proto_dot_sochdb__pb2.ExportCheckpointResponse.FromString,
+            sochdb__pb2.ExportCheckpointRequest.SerializeToString,
+            sochdb__pb2.ExportCheckpointResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -2755,8 +2887,8 @@ class CheckpointService(object):
             request,
             target,
             '/sochdb.v1.CheckpointService/ImportCheckpoint',
-            proto_dot_sochdb__pb2.ImportCheckpointRequest.SerializeToString,
-            proto_dot_sochdb__pb2.ImportCheckpointResponse.FromString,
+            sochdb__pb2.ImportCheckpointRequest.SerializeToString,
+            sochdb__pb2.ImportCheckpointResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -2768,7 +2900,7 @@ class CheckpointService(object):
             _registered_method=True)
 
 
-class McpServiceStub(object):
+class McpServiceStub:
     """=============================================================================
     MCP SERVICE
     =============================================================================
@@ -2784,32 +2916,32 @@ class McpServiceStub(object):
         """
         self.RegisterTool = channel.unary_unary(
                 '/sochdb.v1.McpService/RegisterTool',
-                request_serializer=proto_dot_sochdb__pb2.RegisterToolRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.RegisterToolResponse.FromString,
+                request_serializer=sochdb__pb2.RegisterToolRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.RegisterToolResponse.FromString,
                 _registered_method=True)
         self.ExecuteTool = channel.unary_unary(
                 '/sochdb.v1.McpService/ExecuteTool',
-                request_serializer=proto_dot_sochdb__pb2.ExecuteToolRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.ExecuteToolResponse.FromString,
+                request_serializer=sochdb__pb2.ExecuteToolRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.ExecuteToolResponse.FromString,
                 _registered_method=True)
         self.ListTools = channel.unary_unary(
                 '/sochdb.v1.McpService/ListTools',
-                request_serializer=proto_dot_sochdb__pb2.ListToolsRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.ListToolsResponse.FromString,
+                request_serializer=sochdb__pb2.ListToolsRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.ListToolsResponse.FromString,
                 _registered_method=True)
         self.UnregisterTool = channel.unary_unary(
                 '/sochdb.v1.McpService/UnregisterTool',
-                request_serializer=proto_dot_sochdb__pb2.UnregisterToolRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.UnregisterToolResponse.FromString,
+                request_serializer=sochdb__pb2.UnregisterToolRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.UnregisterToolResponse.FromString,
                 _registered_method=True)
         self.GetToolSchema = channel.unary_unary(
                 '/sochdb.v1.McpService/GetToolSchema',
-                request_serializer=proto_dot_sochdb__pb2.GetToolSchemaRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.GetToolSchemaResponse.FromString,
+                request_serializer=sochdb__pb2.GetToolSchemaRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.GetToolSchemaResponse.FromString,
                 _registered_method=True)
 
 
-class McpServiceServicer(object):
+class McpServiceServicer:
     """=============================================================================
     MCP SERVICE
     =============================================================================
@@ -2857,28 +2989,28 @@ def add_McpServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'RegisterTool': grpc.unary_unary_rpc_method_handler(
                     servicer.RegisterTool,
-                    request_deserializer=proto_dot_sochdb__pb2.RegisterToolRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.RegisterToolResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.RegisterToolRequest.FromString,
+                    response_serializer=sochdb__pb2.RegisterToolResponse.SerializeToString,
             ),
             'ExecuteTool': grpc.unary_unary_rpc_method_handler(
                     servicer.ExecuteTool,
-                    request_deserializer=proto_dot_sochdb__pb2.ExecuteToolRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.ExecuteToolResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.ExecuteToolRequest.FromString,
+                    response_serializer=sochdb__pb2.ExecuteToolResponse.SerializeToString,
             ),
             'ListTools': grpc.unary_unary_rpc_method_handler(
                     servicer.ListTools,
-                    request_deserializer=proto_dot_sochdb__pb2.ListToolsRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.ListToolsResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.ListToolsRequest.FromString,
+                    response_serializer=sochdb__pb2.ListToolsResponse.SerializeToString,
             ),
             'UnregisterTool': grpc.unary_unary_rpc_method_handler(
                     servicer.UnregisterTool,
-                    request_deserializer=proto_dot_sochdb__pb2.UnregisterToolRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.UnregisterToolResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.UnregisterToolRequest.FromString,
+                    response_serializer=sochdb__pb2.UnregisterToolResponse.SerializeToString,
             ),
             'GetToolSchema': grpc.unary_unary_rpc_method_handler(
                     servicer.GetToolSchema,
-                    request_deserializer=proto_dot_sochdb__pb2.GetToolSchemaRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.GetToolSchemaResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.GetToolSchemaRequest.FromString,
+                    response_serializer=sochdb__pb2.GetToolSchemaResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -2888,7 +3020,7 @@ def add_McpServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class McpService(object):
+class McpService:
     """=============================================================================
     MCP SERVICE
     =============================================================================
@@ -2911,8 +3043,8 @@ class McpService(object):
             request,
             target,
             '/sochdb.v1.McpService/RegisterTool',
-            proto_dot_sochdb__pb2.RegisterToolRequest.SerializeToString,
-            proto_dot_sochdb__pb2.RegisterToolResponse.FromString,
+            sochdb__pb2.RegisterToolRequest.SerializeToString,
+            sochdb__pb2.RegisterToolResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -2938,8 +3070,8 @@ class McpService(object):
             request,
             target,
             '/sochdb.v1.McpService/ExecuteTool',
-            proto_dot_sochdb__pb2.ExecuteToolRequest.SerializeToString,
-            proto_dot_sochdb__pb2.ExecuteToolResponse.FromString,
+            sochdb__pb2.ExecuteToolRequest.SerializeToString,
+            sochdb__pb2.ExecuteToolResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -2965,8 +3097,8 @@ class McpService(object):
             request,
             target,
             '/sochdb.v1.McpService/ListTools',
-            proto_dot_sochdb__pb2.ListToolsRequest.SerializeToString,
-            proto_dot_sochdb__pb2.ListToolsResponse.FromString,
+            sochdb__pb2.ListToolsRequest.SerializeToString,
+            sochdb__pb2.ListToolsResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -2992,8 +3124,8 @@ class McpService(object):
             request,
             target,
             '/sochdb.v1.McpService/UnregisterTool',
-            proto_dot_sochdb__pb2.UnregisterToolRequest.SerializeToString,
-            proto_dot_sochdb__pb2.UnregisterToolResponse.FromString,
+            sochdb__pb2.UnregisterToolRequest.SerializeToString,
+            sochdb__pb2.UnregisterToolResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -3019,8 +3151,8 @@ class McpService(object):
             request,
             target,
             '/sochdb.v1.McpService/GetToolSchema',
-            proto_dot_sochdb__pb2.GetToolSchemaRequest.SerializeToString,
-            proto_dot_sochdb__pb2.GetToolSchemaResponse.FromString,
+            sochdb__pb2.GetToolSchemaRequest.SerializeToString,
+            sochdb__pb2.GetToolSchemaResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -3032,7 +3164,7 @@ class McpService(object):
             _registered_method=True)
 
 
-class KvServiceStub(object):
+class KvServiceStub:
     """=============================================================================
     KV SERVICE (Basic operations)
     =============================================================================
@@ -3048,37 +3180,37 @@ class KvServiceStub(object):
         """
         self.Get = channel.unary_unary(
                 '/sochdb.v1.KvService/Get',
-                request_serializer=proto_dot_sochdb__pb2.KvGetRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.KvGetResponse.FromString,
+                request_serializer=sochdb__pb2.KvGetRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.KvGetResponse.FromString,
                 _registered_method=True)
         self.Put = channel.unary_unary(
                 '/sochdb.v1.KvService/Put',
-                request_serializer=proto_dot_sochdb__pb2.KvPutRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.KvPutResponse.FromString,
+                request_serializer=sochdb__pb2.KvPutRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.KvPutResponse.FromString,
                 _registered_method=True)
         self.Delete = channel.unary_unary(
                 '/sochdb.v1.KvService/Delete',
-                request_serializer=proto_dot_sochdb__pb2.KvDeleteRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.KvDeleteResponse.FromString,
+                request_serializer=sochdb__pb2.KvDeleteRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.KvDeleteResponse.FromString,
                 _registered_method=True)
         self.Scan = channel.unary_stream(
                 '/sochdb.v1.KvService/Scan',
-                request_serializer=proto_dot_sochdb__pb2.KvScanRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.KvScanResponse.FromString,
+                request_serializer=sochdb__pb2.KvScanRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.KvScanResponse.FromString,
                 _registered_method=True)
         self.BatchGet = channel.unary_unary(
                 '/sochdb.v1.KvService/BatchGet',
-                request_serializer=proto_dot_sochdb__pb2.KvBatchGetRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.KvBatchGetResponse.FromString,
+                request_serializer=sochdb__pb2.KvBatchGetRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.KvBatchGetResponse.FromString,
                 _registered_method=True)
         self.BatchPut = channel.unary_unary(
                 '/sochdb.v1.KvService/BatchPut',
-                request_serializer=proto_dot_sochdb__pb2.KvBatchPutRequest.SerializeToString,
-                response_deserializer=proto_dot_sochdb__pb2.KvBatchPutResponse.FromString,
+                request_serializer=sochdb__pb2.KvBatchPutRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.KvBatchPutResponse.FromString,
                 _registered_method=True)
 
 
-class KvServiceServicer(object):
+class KvServiceServicer:
     """=============================================================================
     KV SERVICE (Basic operations)
     =============================================================================
@@ -3133,33 +3265,33 @@ def add_KvServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'Get': grpc.unary_unary_rpc_method_handler(
                     servicer.Get,
-                    request_deserializer=proto_dot_sochdb__pb2.KvGetRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.KvGetResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.KvGetRequest.FromString,
+                    response_serializer=sochdb__pb2.KvGetResponse.SerializeToString,
             ),
             'Put': grpc.unary_unary_rpc_method_handler(
                     servicer.Put,
-                    request_deserializer=proto_dot_sochdb__pb2.KvPutRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.KvPutResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.KvPutRequest.FromString,
+                    response_serializer=sochdb__pb2.KvPutResponse.SerializeToString,
             ),
             'Delete': grpc.unary_unary_rpc_method_handler(
                     servicer.Delete,
-                    request_deserializer=proto_dot_sochdb__pb2.KvDeleteRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.KvDeleteResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.KvDeleteRequest.FromString,
+                    response_serializer=sochdb__pb2.KvDeleteResponse.SerializeToString,
             ),
             'Scan': grpc.unary_stream_rpc_method_handler(
                     servicer.Scan,
-                    request_deserializer=proto_dot_sochdb__pb2.KvScanRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.KvScanResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.KvScanRequest.FromString,
+                    response_serializer=sochdb__pb2.KvScanResponse.SerializeToString,
             ),
             'BatchGet': grpc.unary_unary_rpc_method_handler(
                     servicer.BatchGet,
-                    request_deserializer=proto_dot_sochdb__pb2.KvBatchGetRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.KvBatchGetResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.KvBatchGetRequest.FromString,
+                    response_serializer=sochdb__pb2.KvBatchGetResponse.SerializeToString,
             ),
             'BatchPut': grpc.unary_unary_rpc_method_handler(
                     servicer.BatchPut,
-                    request_deserializer=proto_dot_sochdb__pb2.KvBatchPutRequest.FromString,
-                    response_serializer=proto_dot_sochdb__pb2.KvBatchPutResponse.SerializeToString,
+                    request_deserializer=sochdb__pb2.KvBatchPutRequest.FromString,
+                    response_serializer=sochdb__pb2.KvBatchPutResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -3169,7 +3301,7 @@ def add_KvServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class KvService(object):
+class KvService:
     """=============================================================================
     KV SERVICE (Basic operations)
     =============================================================================
@@ -3192,8 +3324,8 @@ class KvService(object):
             request,
             target,
             '/sochdb.v1.KvService/Get',
-            proto_dot_sochdb__pb2.KvGetRequest.SerializeToString,
-            proto_dot_sochdb__pb2.KvGetResponse.FromString,
+            sochdb__pb2.KvGetRequest.SerializeToString,
+            sochdb__pb2.KvGetResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -3219,8 +3351,8 @@ class KvService(object):
             request,
             target,
             '/sochdb.v1.KvService/Put',
-            proto_dot_sochdb__pb2.KvPutRequest.SerializeToString,
-            proto_dot_sochdb__pb2.KvPutResponse.FromString,
+            sochdb__pb2.KvPutRequest.SerializeToString,
+            sochdb__pb2.KvPutResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -3246,8 +3378,8 @@ class KvService(object):
             request,
             target,
             '/sochdb.v1.KvService/Delete',
-            proto_dot_sochdb__pb2.KvDeleteRequest.SerializeToString,
-            proto_dot_sochdb__pb2.KvDeleteResponse.FromString,
+            sochdb__pb2.KvDeleteRequest.SerializeToString,
+            sochdb__pb2.KvDeleteResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -3273,8 +3405,8 @@ class KvService(object):
             request,
             target,
             '/sochdb.v1.KvService/Scan',
-            proto_dot_sochdb__pb2.KvScanRequest.SerializeToString,
-            proto_dot_sochdb__pb2.KvScanResponse.FromString,
+            sochdb__pb2.KvScanRequest.SerializeToString,
+            sochdb__pb2.KvScanResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -3300,8 +3432,8 @@ class KvService(object):
             request,
             target,
             '/sochdb.v1.KvService/BatchGet',
-            proto_dot_sochdb__pb2.KvBatchGetRequest.SerializeToString,
-            proto_dot_sochdb__pb2.KvBatchGetResponse.FromString,
+            sochdb__pb2.KvBatchGetRequest.SerializeToString,
+            sochdb__pb2.KvBatchGetResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -3327,8 +3459,226 @@ class KvService(object):
             request,
             target,
             '/sochdb.v1.KvService/BatchPut',
-            proto_dot_sochdb__pb2.KvBatchPutRequest.SerializeToString,
-            proto_dot_sochdb__pb2.KvBatchPutResponse.FromString,
+            sochdb__pb2.KvBatchPutRequest.SerializeToString,
+            sochdb__pb2.KvBatchPutResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+
+class SubscriptionServiceStub:
+    """=============================================================================
+    Subscription Service (Task 2 — Delta-evaluation subscription engine)
+    =============================================================================
+
+    """
+
+    def __init__(self, channel):
+        """Constructor.
+
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.Subscribe = channel.unary_stream(
+                '/sochdb.v1.SubscriptionService/Subscribe',
+                request_serializer=sochdb__pb2.SubscribeRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.SubscribeEvent.FromString,
+                _registered_method=True)
+        self.WatchKey = channel.unary_stream(
+                '/sochdb.v1.SubscriptionService/WatchKey',
+                request_serializer=sochdb__pb2.WatchKeyRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.WatchKeyEvent.FromString,
+                _registered_method=True)
+        self.ListSubscriptions = channel.unary_unary(
+                '/sochdb.v1.SubscriptionService/ListSubscriptions',
+                request_serializer=sochdb__pb2.ListSubscriptionsRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.ListSubscriptionsResponse.FromString,
+                _registered_method=True)
+        self.CancelSubscription = channel.unary_unary(
+                '/sochdb.v1.SubscriptionService/CancelSubscription',
+                request_serializer=sochdb__pb2.CancelSubscriptionRequest.SerializeToString,
+                response_deserializer=sochdb__pb2.CancelSubscriptionResponse.FromString,
+                _registered_method=True)
+
+
+class SubscriptionServiceServicer:
+    """=============================================================================
+    Subscription Service (Task 2 — Delta-evaluation subscription engine)
+    =============================================================================
+
+    """
+
+    def Subscribe(self, request, context):
+        """Subscribe to CDC events with optional filters.
+        Returns a server-side stream of change events.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def WatchKey(self, request, context):
+        """Watch a specific key for changes.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ListSubscriptions(self, request, context):
+        """List active subscriptions.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def CancelSubscription(self, request, context):
+        """Cancel an active subscription (client can also just drop the stream).
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+
+def add_SubscriptionServiceServicer_to_server(servicer, server):
+    rpc_method_handlers = {
+            'Subscribe': grpc.unary_stream_rpc_method_handler(
+                    servicer.Subscribe,
+                    request_deserializer=sochdb__pb2.SubscribeRequest.FromString,
+                    response_serializer=sochdb__pb2.SubscribeEvent.SerializeToString,
+            ),
+            'WatchKey': grpc.unary_stream_rpc_method_handler(
+                    servicer.WatchKey,
+                    request_deserializer=sochdb__pb2.WatchKeyRequest.FromString,
+                    response_serializer=sochdb__pb2.WatchKeyEvent.SerializeToString,
+            ),
+            'ListSubscriptions': grpc.unary_unary_rpc_method_handler(
+                    servicer.ListSubscriptions,
+                    request_deserializer=sochdb__pb2.ListSubscriptionsRequest.FromString,
+                    response_serializer=sochdb__pb2.ListSubscriptionsResponse.SerializeToString,
+            ),
+            'CancelSubscription': grpc.unary_unary_rpc_method_handler(
+                    servicer.CancelSubscription,
+                    request_deserializer=sochdb__pb2.CancelSubscriptionRequest.FromString,
+                    response_serializer=sochdb__pb2.CancelSubscriptionResponse.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'sochdb.v1.SubscriptionService', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+    server.add_registered_method_handlers('sochdb.v1.SubscriptionService', rpc_method_handlers)
+
+
+ # This class is part of an EXPERIMENTAL API.
+class SubscriptionService:
+    """=============================================================================
+    Subscription Service (Task 2 — Delta-evaluation subscription engine)
+    =============================================================================
+
+    """
+
+    @staticmethod
+    def Subscribe(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(
+            request,
+            target,
+            '/sochdb.v1.SubscriptionService/Subscribe',
+            sochdb__pb2.SubscribeRequest.SerializeToString,
+            sochdb__pb2.SubscribeEvent.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def WatchKey(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(
+            request,
+            target,
+            '/sochdb.v1.SubscriptionService/WatchKey',
+            sochdb__pb2.WatchKeyRequest.SerializeToString,
+            sochdb__pb2.WatchKeyEvent.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ListSubscriptions(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/sochdb.v1.SubscriptionService/ListSubscriptions',
+            sochdb__pb2.ListSubscriptionsRequest.SerializeToString,
+            sochdb__pb2.ListSubscriptionsResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def CancelSubscription(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/sochdb.v1.SubscriptionService/CancelSubscription',
+            sochdb__pb2.CancelSubscriptionRequest.SerializeToString,
+            sochdb__pb2.CancelSubscriptionResponse.FromString,
             options,
             channel_credentials,
             insecure,
