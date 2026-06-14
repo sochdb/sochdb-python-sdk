@@ -141,7 +141,7 @@ LLM-Optimized Embedded Database with Native Vector Search
 11. [Namespaces & Collections](#11-namespaces--collections)
 12. [Priority Queues](#12-priority-queues)
 13. [Vector Search](#13-vector-search)
-14. [Hybrid Search (Vector + BM25)](#14-hybrid-search-vector--bm25)
+14. [Hybrid Search (Vector + BM25 / grep)](#14-hybrid-search-vector--bm25--grep)
 15. [Graph Operations](#15-graph-operations)
 16. [Temporal Graph (Time-Travel)](#16-temporal-graph-time-travel)
 17. [Semantic Cache](#17-semantic-cache)
@@ -495,7 +495,7 @@ db.close()
 - **Key-Value**: Fast reads/writes with `get`/`put`/`delete`
 - **Transactions**: ACID with SSI isolation
 - **Vector Search**: HNSW-based semantic search
-- **Hybrid Search**: Combine vectors with BM25 keyword search
+- **Hybrid Search**: Combine vectors with BM25 or grep keyword search
 - **Graph**: Build and traverse knowledge graphs
 - **LLM-Optimized**: TOON format uses 40-60% fewer tokens than JSON
 
@@ -1644,8 +1644,9 @@ collection = ns.collection("documents")
 | `insert_batch(ids, vectors, metadatas)` | Bulk insert | Batch insert |
 | `search(SearchRequest)` | Advanced search | Full control |
 | `vector_search(vector, k, filter)` | Vector similarity | Convenience method |
-| `keyword_search(query, k, filter)` | BM25 search | Text search |
-| `hybrid_search(vector, text_query, k, alpha)` | Vector + BM25 | Combined search |
+| `keyword_search(query, k, filter)` | BM25 search | Relevance-ranked text search |
+| `grep_search(query, k, filter)` | Substring AND-match | Exact-term / id / code lookups |
+| `hybrid_search(vector, text_query, k, alpha, keyword_mode)` | Vector + BM25/grep | Combined search |
 
 ### Adding Documents
 
@@ -1814,9 +1815,26 @@ config = CollectionConfig(
 
 ---
 
-## 14. Hybrid Search (Vector + BM25)
+## 14. Hybrid Search (Vector + BM25 / grep)
 
-Combine vector similarity with keyword matching for best results.
+Combine vector similarity with keyword matching for best results. The keyword
+leg supports two algorithms, selectable via `keyword_mode`:
+
+| `keyword_mode` | Algorithm | Best for |
+|----------------|-----------|----------|
+| `"bm25"` (default) | BM25 relevance ranking (IDF/TF), native Rust FFI | Natural-language search where wording varies |
+| `"grep"` | Case-insensitive substring AND-match (every term must appear), in-memory scan | Exact-term / id / code lookups, latency-critical paths |
+
+Both fuse with the HNSW vector leg using Reciprocal Rank Fusion (RRF), giving
+you **BM25 + HNSW** or **grep + HNSW**.
+
+> **Performance note:** the `grep` leg scans the collection's in-memory
+> content/metadata store (no FFI round-trip, no vector payload parsing), so it is
+> typically much faster than the BM25 leg. In a real 360 evaluation (Ollama
+> `nomic-embed-text` embeddings + LLM-judged relevance), **grep + HNSW matched
+> BM25 + HNSW on recall and nDCG while being ~50x faster**, because the shared
+> HNSW leg already handles paraphrase queries. Prefer BM25 + HNSW when the
+> keyword leg must rank inflected/partial lexical overlap on its own.
 
 ### Enable Hybrid Search
 
@@ -1862,15 +1880,42 @@ results = collection.keyword_search(
 )
 ```
 
+### grep Search (Substring AND-Match Only)
+
+```python
+# Every whitespace-separated term must appear as a substring of the
+# document's content or string metadata (case-insensitive). Ranked by
+# total term occurrences. Fast, model-free, precision-oriented.
+results = collection.grep_search(
+    query="machine learning",
+    k=10,
+    filter={"category": "tech"}
+)
+```
+
 ### Hybrid Search (Vector + BM25)
 
 ```python
-# Combine vector and keyword search
+# Combine vector and keyword search (BM25 keyword leg — the default)
 results = collection.hybrid_search(
     vector=[0.1, 0.2, ...],        # Query embedding
     text_query="machine learning",  # Keyword query
     k=10,
     alpha=0.7,  # 0.0 = pure keyword, 1.0 = pure vector, 0.5 = balanced
+    filter={"category": "tech"}
+)
+```
+
+### Hybrid Search (Vector + grep)
+
+```python
+# Same RRF fusion, but the keyword leg is a fast substring AND-match
+results = collection.hybrid_search(
+    vector=[0.1, 0.2, ...],
+    text_query="machine learning",
+    k=10,
+    alpha=0.5,
+    keyword_mode="grep",            # "bm25" (default) or "grep"
     filter={"category": "tech"}
 )
 ```
@@ -1883,6 +1928,7 @@ request = SearchRequest(
     text_query="machine learning",
     k=10,
     alpha=0.7,                      # Blend factor
+    keyword_mode="bm25",            # "bm25" (relevance ranking) or "grep" (substring AND-match)
     rrf_k=60.0,                     # RRF k parameter (Reciprocal Rank Fusion)
     filter={"category": "tech"},
     aggregate="max",                # max | mean | first (for multi-vector docs)

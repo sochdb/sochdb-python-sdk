@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=45", "wheel", "setuptools-rust>=1.7"]
+requires = ["setuptools>=61", "wheel", "setuptools-rust>=1.7"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "sochdb"
-version = "0.6.1"
+dynamic = ["version"]
 description = "SochDB is an AI-native database with token-optimized output, O(|path|) lookups, built-in vector search, and durable transactions."
 readme = "README.md"
 license = {text = "Apache-2.0"}
@@ -73,6 +73,12 @@ Documentation = "https://sochdb.dev"
 sochdb-server = "sochdb.cli_server:main"
 sochdb-bulk = "sochdb.cli_bulk:main"
 sochdb-grpc-server = "sochdb.cli_grpc:main"
+
+[tool.setuptools.dynamic]
+# Single source of truth for the version: src/sochdb/__init__.py (__version__).
+# setuptools statically parses this attribute, so bumping __version__ keeps
+# the package metadata and `sochdb.__version__` in sync automatically.
+version = {attr = "sochdb.__version__"}
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -1751,10 +1751,19 @@ class Database:
     
     def __enter__(self) -> "Database":
         return self
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         self.close()
-    
+
+    def __del__(self) -> None:
+        # Best-effort release of the single-writer lock if the caller never
+        # called close()/used a context manager (notebooks, scripts, wrappers
+        # that store self._db). close() is idempotent; must never raise in GC.
+        try:
+            self.close()
+        except Exception:
+            pass
+
     # =========================================================================
     # Key-Value API (auto-commit)
     # =========================================================================

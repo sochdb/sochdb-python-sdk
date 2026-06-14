@@ -210,3 +210,8 @@ c_code.py
 c-code.py
 toondb_python.txt
 sochdb_python.txt
+# Benchmark/example generated artifacts
+bench_grep_vs_bm25_db/
+bench_real_360_db/
+examples/.cache_360/
+examples/real_360_report.json
