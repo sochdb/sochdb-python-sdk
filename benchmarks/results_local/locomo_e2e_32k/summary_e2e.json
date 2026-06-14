@@ -1,0 +1,23 @@
+[
+  {
+    "dataset": "locomo",
+    "retriever": "sochdb-sdk-grpc/three_lane",
+    "llm_model": "nvidia/Qwen3.6-35B-A3B-NVFP4",
+    "embed_model": null,
+    "num_questions": 1542,
+    "retrieval_recall_pct": 39.95,
+    "answer_substring_acc_pct": 32.68,
+    "answer_judge_acc_pct": 54.09,
+    "avg_retrieve_ms": 89.8,
+    "avg_answer_ms": 2601.0,
+    "tokens": {
+      "llm_calls": 3084,
+      "embed_calls": 0,
+      "prompt_tokens": 19100537,
+      "completion_tokens": 13437,
+      "cached_tokens": 0,
+      "llm_errors": 2
+    },
+    "wall_time_s": 4694.8
+  }
+]
