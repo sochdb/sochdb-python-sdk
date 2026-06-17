@@ -168,7 +168,17 @@ class CollectionConfig:
     # Optional features
     enable_hybrid_search: bool = False  # Enable BM25 + vector search
     content_field: Optional[str] = None # Field to index for BM25
-    
+
+    # When True (default) each document's raw embedding is also written into its
+    # durable KV doc. That copy is what the cold FFI vector-search path and the
+    # Chroma-compat getters read back. Set False to shrink KV docs and speed up
+    # inserts when you only ever query in-session — the HNSW graph and the .npy
+    # snapshot still retain the vectors, so same-session search is unaffected.
+    # CAVEAT: with False, a cold restart that cannot reload the .npy snapshot has
+    # no vector source for the FFI-fallback search and will return empty results.
+    # Keep the default (True) unless you never rely on cross-restart vector search.
+    persist_vector_in_kv: bool = True
+
     def __post_init__(self):
         # Coerce string metric to DistanceMetric enum
         if isinstance(self.metric, str):
@@ -191,6 +201,7 @@ class CollectionConfig:
             "quantization": self.quantization.value,
             "enable_hybrid_search": self.enable_hybrid_search,
             "content_field": self.content_field,
+            "persist_vector_in_kv": self.persist_vector_in_kv,
         }
     
     @classmethod
@@ -213,6 +224,7 @@ class CollectionConfig:
             quantization=QuantizationType(data.get("quantization", "none")),
             enable_hybrid_search=data.get("enable_hybrid_search", False),
             content_field=data.get("content_field"),
+            persist_vector_in_kv=data.get("persist_vector_in_kv", True),
         )
 
 
@@ -444,17 +456,19 @@ class Collection:
         self,
         vector: List[float],
         k: int = 10,
+        include_vectors: bool = False,
     ) -> "SearchResults":
         """
         Exact brute-force vector search for perfect recall.
-        
+
         Computes distances to ALL vectors and returns the true k-nearest
         neighbors. Guarantees recall@k = 1.0 but is O(n) per query.
-        
+
         Args:
             vector: Query vector
             k: Number of results
-            
+            include_vectors: If True, results carry their stored embedding.
+
         Returns:
             SearchResults with perfect recall
         """
@@ -474,7 +488,7 @@ class Collection:
             result = SearchResult(
                 id=str(doc_id), score=similarity,
                 metadata=None,
-                vector=None,
+                vector=self._raw_vectors.get(doc_id) if include_vectors else None,
             )
             results.append(result)
         
@@ -485,18 +499,20 @@ class Collection:
         self,
         vector: List[float],
         k: int = 10,
+        include_vectors: bool = False,
     ) -> "SearchResults":
         """
         Exact brute-force vector search using f64 precision.
-        
+
         Same as vector_search_exact but computes distances in f64 to match
         ground truth computed with numpy f64 arithmetic. Eliminates f32
         tie-breaking mismatches at the k-th boundary.
-        
+
         Args:
             vector: Query vector
             k: Number of results
-            
+            include_vectors: If True, results carry their stored embedding.
+
         Returns:
             SearchResults with perfect precision against f64 ground truth
         """
@@ -516,7 +532,7 @@ class Collection:
             result = SearchResult(
                 id=str(doc_id), score=similarity,
                 metadata=None,
-                vector=None,
+                vector=self._raw_vectors.get(doc_id) if include_vectors else None,
             )
             results.append(result)
         
@@ -532,7 +548,24 @@ class Collection:
         self._id_to_internal[doc_id] = internal_id
         self._internal_to_id[internal_id] = doc_id
         return internal_id
-    
+
+    # NOTE on scoring (review Task 5): result scores use the cosine identity
+    # `max(0, 1 - distance)`. A metric-aware transform was attempted but reverted:
+    # the EMBEDDED FFI path is cosine-only, because `hnsw_new(dimension, M,
+    # ef_construction)` (vector.py) takes no metric and builds HnswConfig::default()
+    # (metric = Cosine), so CollectionConfig.metric is ignored in-process. Applying
+    # a Euclidean/dot transform to a cosine distance would mis-score, hence the
+    # revert.
+    #
+    # The ENGINE itself is metric-complete: HnswConfig.metric +
+    # VectorIndex::with_params(DistanceMetric, ...) exist, the distance kernels
+    # dispatch on metric (Cosine→cosine, Euclidean→l2, DotProduct→-dot), and the
+    # gRPC server path (SochDBClient) already honors all three (tested for L2/dot).
+    # So: non-cosine metrics work today via the server path; the embedded fix is
+    # thin plumbing — add a metric arg to the `hnsw_new` FFI (set config.metric
+    # before HnswIndex::new), rebuild the dylib, pass config.metric from Python,
+    # and make this transform metric-aware. Not implementing distance math.
+
     def insert(
         self,
         id: Union[str, int],
@@ -580,11 +613,12 @@ class Collection:
         with self._db.transaction() as txn:
             doc_data = {
                 "id": str(id),
-                "vector": vector,
                 "metadata": meta,
                 "content": content or meta.get("_content", ""),
                 "is_multi_vector": False,
             }
+            if self._config.persist_vector_in_kv:
+                doc_data["vector"] = vector
             txn.put(self._vector_key(id), _dumps_bytes(doc_data))
     
     def insert_batch(
@@ -648,7 +682,14 @@ class Collection:
         self._ensure_index(self._config.dimension)
         internal_ids = np.array([self._get_internal_id(doc[0]) for doc in documents], dtype=np.uint64)
         vectors_array = np.array([doc[1] for doc in documents], dtype=np.float32)
-        count = self._vector_index.insert_batch(internal_ids, vectors_array)
+        # Prefer the zero-allocation flat FFI path (hnsw_insert_batch_flat).
+        # vectors_array is already a C-contiguous float32 (N, D) array and
+        # internal_ids is C-contiguous uint64, so strict=False adds no copy but
+        # avoids the defensive re-copy the generic insert_batch always does.
+        try:
+            count = self._vector_index.insert_batch_fast(internal_ids, vectors_array, strict=False)
+        except AttributeError:
+            count = self._vector_index.insert_batch(internal_ids, vectors_array)
         for i, (doc_id, vector, metadata, content) in enumerate(documents):
             self._metadata_store[doc_id] = batch_metadatas[i]
             self._raw_vectors[doc_id] = vector  # keep for snapshot
@@ -660,11 +701,12 @@ class Collection:
                 meta = batch_metadatas[i]
                 doc_data = {
                     "id": str(doc_id),
-                    "vector": vector,
                     "metadata": meta,
                     "content": content or meta.get("_content", ""),
                     "is_multi_vector": False,
                 }
+                if self._config.persist_vector_in_kv:
+                    doc_data["vector"] = vector
                 txn.put(self._vector_key(doc_id), _dumps_bytes(doc_data))
 
         return count
@@ -843,16 +885,20 @@ class Collection:
         k: int = 10,
         filter: Optional[Dict[str, Any]] = None,
         min_score: Optional[float] = None,
+        include_vectors: bool = False,
     ) -> SearchResults:
         """
         Convenience method for vector similarity search.
-        
+
         Args:
             vector: Query vector
             k: Number of results
             filter: Optional metadata filter
             min_score: Minimum similarity score
-            
+            include_vectors: If True, each result carries its stored embedding
+                (read from the in-memory index, no re-embedding). Needed for MMR
+                / relevance feedback without an extra embed pass.
+
         Returns:
             SearchResults
         """
@@ -861,6 +907,7 @@ class Collection:
             k=k,
             filter=filter,
             min_score=min_score,
+            include_vectors=include_vectors,
         )
         return self.search(request)
     
@@ -869,17 +916,19 @@ class Collection:
         query: str,
         k: int = 10,
         filter: Optional[Dict[str, Any]] = None,
+        include_vectors: bool = False,
     ) -> SearchResults:
         """
         Convenience method for keyword (BM25) search.
-        
+
         Requires hybrid search to be enabled on the collection.
-        
+
         Args:
             query: Text query
             k: Number of results
             filter: Optional metadata filter
-            
+            include_vectors: If True, results carry their stored embedding.
+
         Returns:
             SearchResults
         """
@@ -888,12 +937,13 @@ class Collection:
                 "Keyword search requires enable_hybrid_search=True in collection config",
                 remediation="Recreate collection with CollectionConfig(enable_hybrid_search=True)"
             )
-        
+
         request = SearchRequest(
             text_query=query,
             k=k,
             filter=filter,
             alpha=0.0,  # Pure keyword
+            include_vectors=include_vectors,
         )
         return self.search(request)
 
@@ -902,6 +952,7 @@ class Collection:
         query: str,
         k: int = 10,
         filter: Optional[Dict[str, Any]] = None,
+        include_vectors: bool = False,
     ) -> SearchResults:
         """
         Convenience method for grep-style keyword search.
@@ -929,6 +980,7 @@ class Collection:
             filter=filter,
             alpha=0.0,
             keyword_mode="grep",
+            include_vectors=include_vectors,
         )
         return self.search(request)
 
@@ -940,6 +992,7 @@ class Collection:
         alpha: float = 0.5,
         filter: Optional[Dict[str, Any]] = None,
         keyword_mode: str = "bm25",
+        include_vectors: bool = False,
     ) -> SearchResults:
         """
         Convenience method for hybrid (vector + keyword) search.
@@ -966,6 +1019,7 @@ class Collection:
             alpha=alpha,
             filter=filter,
             keyword_mode=keyword_mode,
+            include_vectors=include_vectors,
         )
         return self.search(request)
     
@@ -1024,7 +1078,7 @@ class Collection:
                 result = SearchResult(
                     id=doc_id, score=score,
                     metadata=metadata if request.include_metadata else None,
-                    vector=None,
+                    vector=self._raw_vectors.get(doc_id) if request.include_vectors else None,
                 )
                 results.append(result)
                 if len(results) >= request.k:
@@ -1065,7 +1119,7 @@ class Collection:
             result = SearchResult(
                 id=str(doc_id), score=similarity,
                 metadata=metadata if request.include_metadata else None,
-                vector=None,
+                vector=self._raw_vectors.get(doc_id) if request.include_vectors else None,
             )
             results.append(result)
             if len(results) >= request.k:
@@ -1128,7 +1182,7 @@ class Collection:
                     results.append(SearchResult(
                         id=str(doc_id), score=similarity,
                         metadata=metadata if request.include_metadata else None,
-                        vector=None,
+                        vector=self._raw_vectors.get(doc_id) if request.include_vectors else None,
                     ))
                     if len(results) >= k:
                         break
@@ -1323,7 +1377,7 @@ class Collection:
                     id=r["id"],
                     score=r["score"],
                     metadata=r.get("metadata") if request.include_metadata else None,
-                    vector=None,
+                    vector=self._raw_vectors.get(r["id"]) if request.include_vectors else None,
                 )
                 results.append(result)
             
