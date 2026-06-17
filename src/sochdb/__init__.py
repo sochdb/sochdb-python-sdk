@@ -32,7 +32,7 @@ Example (Server Mode):
     client.put_kv("key", b"value")
 """
 
-__version__ = "0.6.3"
+__version__ = "0.6.4"
 
 # Version of the bundled/target SochDB native engine (Rust core: libsochdb_storage
 # / libsochdb_index). This is intentionally distinct from __version__ above, which
