@@ -34,6 +34,13 @@ Example (Server Mode):
 
 __version__ = "0.6.3"
 
+# Version of the bundled/target SochDB native engine (Rust core: libsochdb_storage
+# / libsochdb_index). This is intentionally distinct from __version__ above, which
+# is the Python package's own SemVer line. The native lib exposes no version
+# symbol, so this is bumped at release; surface it in bug reports / telemetry so a
+# "0.6.3" package isn't mistaken for an old engine when it actually loads 2.x.
+__core_version__ = "2.0.9"
+
 # Embedded mode (FFI)
 from .database import Database, Transaction, IsolationLevel
 from .namespace import (
@@ -146,6 +153,7 @@ GrpcClient = SochDBClient
 __all__ = [
     # Version
     "__version__",
+    "__core_version__",
     
     # Embedded mode (FFI)
     "Database",
