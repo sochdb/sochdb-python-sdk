@@ -451,7 +451,26 @@ class Collection:
             self._vector_index.ef_search = ef_search
         # Store for deferred application (if index not yet created)
         self._ef_search_override = ef_search
-    
+
+    def optimize(self) -> int:
+        """Finalize the vector index for maximum recall.
+
+        Runs the engine's exact layer-0 rebuild (NN-descent + connectivity repair)
+        over the in-memory HNSW, lifting recall toward exact-kNN quality. Call once
+        after a bulk load. No-op if no vectors have been inserted yet (or above the
+        engine's exact-rebuild scale cap). Requires the bundled native engine
+        >= 2.0.11; raises RuntimeError on older bundles.
+
+        Returns the number of vectors whose layer-0 edges were rebuilt.
+        """
+        # After a reopen the HNSW may not be materialised yet; rebuild it first so
+        # optimize() works on a persisted collection too.
+        if self._vector_index is None or len(self._vector_index) == 0:
+            self._reload_index()
+        if self._vector_index is None:
+            return 0
+        return self._vector_index.optimize()
+
     def vector_search_exact(
         self,
         vector: List[float],

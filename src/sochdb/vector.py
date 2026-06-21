@@ -292,7 +292,14 @@ class _FFI:
         # hnsw_build_flat_cache - Build flat neighbor cache
         lib.hnsw_build_flat_cache.argtypes = [ctypes.c_void_p]
         lib.hnsw_build_flat_cache.restype = ctypes.c_int
-        
+
+        # hnsw_optimize - exact layer-0 rebuild for max recall (optional, engine >= 2.0.11)
+        try:
+            lib.hnsw_optimize.argtypes = [ctypes.c_void_p]
+            lib.hnsw_optimize.restype = ctypes.c_int
+        except AttributeError:
+            pass  # Older library without optimize() support
+
         # hnsw_len
         lib.hnsw_len.argtypes = [ctypes.c_void_p]
         lib.hnsw_len.restype = ctypes.c_size_t
@@ -740,7 +747,35 @@ class VectorIndex:
         result = lib.hnsw_build_flat_cache(self._ptr)
         if result != 0:
             raise RuntimeError("Failed to build flat cache")
-    
+
+    def optimize(self) -> int:
+        """Finalize the index for maximum recall (exact layer-0 rebuild).
+
+        Recomputes high-quality layer-0 neighbours for every vector (NN-descent +
+        exact-f32 rerank) and repairs graph connectivity, lifting recall toward
+        exact-kNN quality -- especially at high dimension where the as-built graph
+        can fall a few points short. Call it ONCE after a bulk load; it is a no-op
+        above the engine's exact-rebuild scale cap and is serialized against
+        concurrent inserts internally.
+
+        Returns the number of vectors whose layer-0 edges were rebuilt.
+
+        Raises:
+            RuntimeError: if the bundled native engine predates the optimize FFI
+                (engine < 2.0.11), or on a null handle.
+        """
+        lib = _FFI.get_lib()
+        fn = getattr(lib, "hnsw_optimize", None)
+        if fn is None:
+            raise RuntimeError(
+                "optimize() requires the sochdb native engine >= 2.0.11 "
+                "(hnsw_optimize is missing from the bundled library)"
+            )
+        result = fn(self._ptr)
+        if result < 0:
+            raise RuntimeError("Failed to optimize index (null handle)")
+        return result
+
     def search_ultra(self, query: np.ndarray, k: int = 10) -> List[Tuple[int, float]]:
         """
         Lock-free search using flat neighbor cache.

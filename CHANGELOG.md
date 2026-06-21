@@ -5,6 +5,21 @@ All notable changes to the SochDB Python SDK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-06-21
+
+### Added
+
+- **`Collection.optimize()` and `VectorIndex.optimize()`** — finalize a vector
+  index for maximum recall after a bulk load. Runs the engine's exact layer-0
+  rebuild (NN-descent + exact-f32 rerank) and connectivity repair, lifting recall
+  toward exact-kNN quality, which is most noticeable at high dimension where the
+  as-built HNSW graph can fall a few points short. Call once after bulk insert;
+  it's a no-op above the engine's exact-rebuild scale cap, serialized against
+  concurrent inserts, and (on `Collection`) rebuilds the index from KV first if
+  the collection was just reopened. Bundles native engine **2.0.11**
+  (`__core_version__` 2.0.10 → 2.0.11), which adds the `hnsw_optimize` C FFI
+  export this binds to. Regression test in `tests/test_optimize.py`.
+
 ## [0.7.1] - 2026-06-21
 
 ### Fixed
