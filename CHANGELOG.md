@@ -5,6 +5,24 @@ All notable changes to the SochDB Python SDK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.1] - 2026-06-21
+
+### Fixed
+
+- **`persist_directory` collections were not searchable after reopening.** Vector
+  search returned 0 results once a process reopened a persisted collection, even
+  though the data was intact (`count()` and `get_by_ids()` worked). Root cause:
+  the in-memory HNSW was rebuilt only from a numpy snapshot that was never written
+  (`_persist_vectors_snapshot` had no callers), so the lazy reload always found
+  nothing. The reload path now falls back to rebuilding the HNSW from the
+  KV-persisted vectors — which are written transactionally on every insert, so the
+  rebuild is crash-safe and does not depend on `close()` being called. Vector,
+  filtered, and keyword search all work again across sessions. Added regression
+  tests (`tests/test_persist_reload.py`).
+  - Note: collections created with `persist_vector_in_kv=False` store vectors only
+    in the (currently unwritten) snapshot, so they remain non-reloadable; use the
+    default `persist_vector_in_kv=True` when you need cross-session vector search.
+
 ## [0.7.0] - 2026-06-21
 
 ### Changed

@@ -1042,7 +1042,7 @@ class Collection:
         if request.filter:
             if self._vector_index is not None and len(self._vector_index) > 0:
                 return self._search_in_memory_filtered(request, start_time)
-            if self._config.dimension is not None and self._reload_vectors_from_snapshot() > 0:
+            if self._reload_index() > 0:
                 return self._search_in_memory_filtered(request, start_time)
 
         search_k = request.k * 3 if request.filter else request.k
@@ -1051,11 +1051,10 @@ class Collection:
         if self._vector_index is not None and len(self._vector_index) > 0:
             return self._search_in_memory(request, search_k, start_time)
 
-        # Reload path: load vectors from snapshot into HNSW (fast batch insert)
-        if self._config.dimension is not None:
-            loaded = self._reload_vectors_from_snapshot()
-            if loaded > 0:
-                return self._search_in_memory(request, search_k, start_time)
+        # Reload path: rebuild HNSW from snapshot or KV store (after a reopen).
+        loaded = self._reload_index()
+        if loaded > 0:
+            return self._search_in_memory(request, search_k, start_time)
         
         # Fallback: try native Rust FFI search
         ffi_results = self._db.ffi_collection_search(
@@ -1325,6 +1324,79 @@ class Collection:
 
         return n
 
+    def _reload_vectors_from_kv(self) -> int:
+        """Rebuild the in-memory HNSW index from vectors persisted in the KV store.
+
+        Robust cross-session reload path used when no numpy snapshot exists.
+        ``insert``/``insert_batch`` write each document — including its vector
+        when ``persist_vector_in_kv`` is set (the default) — to the KV store in
+        the same transaction as the HNSW insert, so the KV store is an
+        always-current, crash-safe source of truth that, unlike the snapshot,
+        does NOT depend on ``close()`` ever being called. This is what makes a
+        ``persist_directory`` collection searchable again after a reopen.
+
+        Returns the number of vectors loaded (0 if none are recoverable, e.g.
+        the collection was created with ``persist_vector_in_kv=False``, in which
+        case the vectors live only in the snapshot).
+        """
+        import numpy as np
+
+        dim = self._config.dimension
+        prefix = self._vectors_prefix()
+        doc_ids = []
+        internal_ids = []
+        vectors = []
+        with self._db.transaction() as txn:
+            for _key, value in txn.scan_prefix(prefix):
+                try:
+                    doc = _loads(value)
+                except Exception:
+                    continue
+                vec = doc.get("vector")
+                # Skip records with no recoverable single vector: persist was
+                # disabled, or this is a multi-vector doc handled elsewhere.
+                if vec is None or doc.get("is_multi_vector"):
+                    continue
+                doc_id = doc.get("id")
+                if doc_id is None:
+                    continue
+                if dim is None:
+                    dim = len(vec)
+                    object.__setattr__(self._config, "dimension", dim)
+                if len(vec) != dim:
+                    continue
+                iid = self._get_internal_id(doc_id)
+                self._metadata_store[doc_id] = doc.get("metadata", {}) or {}
+                self._raw_vectors[doc_id] = vec
+                doc_ids.append(doc_id)
+                internal_ids.append(iid)
+                vectors.append(vec)
+
+        if not doc_ids:
+            return 0
+
+        self._ensure_index(dim)
+        ids_arr = np.asarray(internal_ids, dtype=np.uint64)
+        vecs_arr = np.asarray(vectors, dtype=np.float32)
+        try:
+            self._vector_index.insert_batch_fast(ids_arr, vecs_arr, strict=False)
+        except AttributeError:
+            self._vector_index.insert_batch(ids_arr, vecs_arr)
+        return len(doc_ids)
+
+    def _reload_index(self) -> int:
+        """Repopulate the in-memory HNSW after a reopen.
+
+        Tries the fast numpy snapshot first, then falls back to rebuilding from
+        the KV store. The KV fallback is what keeps ``persist_directory``
+        collections searchable across sessions; the snapshot is only an
+        opportunistic accelerator that may be absent.
+        """
+        loaded = self._reload_vectors_from_snapshot()
+        if loaded > 0:
+            return loaded
+        return self._reload_vectors_from_kv()
+
     def _matches_filter(self, metadata: Dict[str, Any], filter_dict: Dict[str, Any]) -> bool:
         """Check if metadata matches filter criteria."""
         for key, value in filter_dict.items():
@@ -1528,8 +1600,8 @@ class Collection:
         # in-memory HNSW before touching storage.
         if not self._metadata_store and self._config.dimension is not None:
             # Same lazy-rebuild trigger used by vector search: repopulate the
-            # in-memory maps (including metadata/content) from the snapshot.
-            self._reload_vectors_from_snapshot()
+            # in-memory maps (incl. metadata/content) from snapshot or KV store.
+            self._reload_index()
 
         if self._metadata_store:
             return self._grep_search_in_memory(request, terms, start_time)
