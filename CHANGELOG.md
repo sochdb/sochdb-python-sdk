@@ -5,7 +5,22 @@ All notable changes to the SochDB Python SDK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.6.0] - 2026-06-13
+## [0.7.0] - 2026-06-21
+
+### Changed
+
+- **Bundles the SochDB 2.0.10 native engine** (`__core_version__` 2.0.9 → 2.0.10),
+  which brings substantial vector-search correctness and performance fixes:
+  - High-dimensional recall is no longer a build-seed coin flip — `optimize()`
+    repairs HNSW graph fragmentation (orphans → 0, recall@10 ≈ 0.994–1.0).
+  - `optimize()` is **2.4–7.1× faster** at high dimension via a sub-quadratic
+    NN-descent rebuild (e.g. dim 3072 euclidean 80.6s → 11.3s) with recall held.
+  - Search returns **correct lower-is-better distances** for every metric
+    (cosine `1 - similarity`, euclidean true `sqrt(Σ diff²)`, dot `-dot`), fixing
+    a cosine result-ordering bug and squared-L2 distance values.
+  - Vector IDs use a checked `u128 → u64` conversion (no silent truncation).
+
+
 
 ### Added
 
