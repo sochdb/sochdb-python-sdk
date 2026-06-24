@@ -5,6 +5,15 @@ All notable changes to the SochDB Python SDK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.1] - 2026-06-24
+
+### Changed
+
+- **Bundles the SochDB 2.0.12 native engine** (`__core_version__` 2.0.11 → 2.0.12),
+  which adds parent/view metadata, parent-aware grouped search, and carries the
+  fastembed semantic embedder + the high-dim recall/optimize work. No SDK API
+  changes; pure engine bump.
+
 ## [0.8.0] - 2026-06-21
 
 ### Added
