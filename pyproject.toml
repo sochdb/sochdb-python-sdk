@@ -86,6 +86,8 @@ where = ["src"]
 [tool.setuptools.package-data]
 # Include bundled native libraries for each platform
 sochdb = [
+    # PEP 561 type-information marker (advertises this package as fully typed)
+    "py.typed",
     # Shared libraries (FFI) - platform-specific directories
     "lib/*/*.so",
     "lib/*/*.dylib", 
