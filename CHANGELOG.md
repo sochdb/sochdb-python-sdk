@@ -5,6 +5,19 @@ All notable changes to the SochDB Python SDK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **PEP 561 `py.typed` marker was missing from the built wheel.** The SDK is
+  fully type-annotated, but downstream `mypy` / Pyright silently skipped
+  analyzing `sochdb` (`"module is installed, but missing library stubs or
+  py.typed marker"`) because the marker was neither present under
+  `src/sochdb/` nor listed in `[tool.setuptools.package-data]`. Adds an empty
+  `src/sochdb/py.typed` and includes it in `package-data` so it lands inside
+  the wheel. Consumers now see the shipped type annotations. No API or ABI
+  change.
+
 ## [0.8.1] - 2026-06-24
 
 ### Changed
