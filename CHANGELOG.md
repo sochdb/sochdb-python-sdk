@@ -5,6 +5,20 @@ All notable changes to the SochDB Python SDK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **CI workflow** (`.github/workflows/ci.yml`) — runs on every push to `main`
+  and every pull request against `main`, matrixed across Python 3.9–3.13. Each
+  cell runs `ruff check` on the `E9`/`F63`/`F7` rule sets, `python -m compileall`
+  for per-version syntax coverage, and an `import sochdb` smoke test. Does not
+  yet run the full pytest suite (that requires the pre-built Rust FFI libraries
+  from the `sochdb/sochdb` release page — follow-up CI PR).
+- **CI status badge** in `README.md` linking to the workflow.
+- **`ruff>=0.5`** added to the `[dev]` extras so `pip install -e ".[dev]"`
+  installs the same linter CI runs.
+
 ## [0.8.1] - 2026-06-24
 
 ### Changed

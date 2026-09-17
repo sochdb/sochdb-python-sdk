@@ -1,5 +1,7 @@
 # SochDB Python SDK
 
+[![CI](https://github.com/sochdb/sochdb-python-sdk/actions/workflows/ci.yml/badge.svg)](https://github.com/sochdb/sochdb-python-sdk/actions/workflows/ci.yml)
+
 **Dual-mode architecture: Embedded (FFI) + Server (gRPC/IPC)**  
 Choose the deployment mode that fits your needs.
 

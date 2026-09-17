@@ -1,0 +1,76 @@
+# =============================================================================
+# SochDB Python SDK — Continuous Integration
+# =============================================================================
+#
+# Runs on every push to main and every pull request against main. Each matrix
+# cell runs:
+#
+#   - `ruff check` on the E9 / F63 / F7 rule sets (syntax + logic errors)
+#   - `python -m compileall` (per-Python-version syntax coverage)
+#   - `import sochdb` smoke test (guards against module-level breakage)
+#
+# We deliberately do NOT run the full pytest suite here: the tests exercise the
+# embedded FFI path, which needs the pre-built Rust libraries from the
+# sochdb/sochdb release page (see release.yml for how those are downloaded).
+# Wiring that up is left to a follow-up CI PR.
+#
+# The matrix covers every Python version listed in pyproject.toml's classifiers
+# (3.9 through 3.13). Ubuntu-only because, without native binaries, additional
+# OSes add cost without signal.
+# =============================================================================
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python-matrix:
+    name: Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install SDK (editable) and dev dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Ruff — syntax and logic checks
+        run: |
+          ruff check \
+            --select E9,F63,F7 \
+            --exclude "src/sochdb/sochdb_pb2.py,src/sochdb/sochdb_pb2_grpc.py,src/sochdb/proto/*_pb2*.py" \
+            src/ tests/
+
+      - name: Byte-compile source
+        run: python -m compileall -q src/sochdb
+
+      - name: Import smoke test (native FFI is lazy — no binary needed)
+        run: |
+          python -c "import sochdb; print('sochdb', sochdb.__version__, 'core', sochdb.__core_version__)"
